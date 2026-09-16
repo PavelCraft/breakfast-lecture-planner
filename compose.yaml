@@ -39,6 +39,50 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: maloneguru-redis
+    restart: always
+    networks:
+      - dbnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  celery_worker:
+    image: breakfast_lecture_planner
+    container_name: maloneguru-celery-worker
+    restart: always
+    command: celery -A breakfast_lecture_planner worker --loglevel=INFO
+    env_file:
+      - .env
+    networks:
+      - dbnet
+    depends_on:
+      breakfast_lecture_planner:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    image: breakfast_lecture_planner
+    container_name: maloneguru-celery-beat
+    restart: always
+    command: celery -A breakfast_lecture_planner beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - .env
+    networks:
+      - dbnet
+    depends_on:
+      breakfast_lecture_planner:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   maloneguru_bot:
     image: breakfast_lecture_planner
