@@ -55,6 +55,10 @@ git merge --ff-only "origin/${DEPLOY_BRANCH}"
 echo "Сборка Docker-образа..."
 "${COMPOSE[@]}" build --pull breakfast_lecture_planner
 
+echo "Проверка запуска Gunicorn в новом образе..."
+docker run --rm --entrypoint python breakfast_lecture_planner \
+    -c 'from gunicorn.workers.ggevent import GeventWorker'
+
 echo "Запуск контейнеров..."
 "${COMPOSE[@]}" up -d --remove-orphans
 
