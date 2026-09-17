@@ -99,6 +99,47 @@ class ScheduleEditingTests(TestCase):
             200,
         )
 
+    def test_archive_lock_is_independent_but_blocks_another_archive_tab(self):
+        url = reverse("planner:schedule_edit_lock")
+        self.assertEqual(
+            self.first.post(url, {"action": "acquire", "token": "schedule-tab"}).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.second.post(url, {"action": "acquire", "token": "archive-tab", "scope": "archive"}).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.first.post(url, {"action": "acquire", "token": "other-archive-tab", "scope": "archive"}).status_code,
+            409,
+        )
+
+    def test_archive_editor_loads_ckeditor_and_requires_its_own_lock(self):
+        page = self.first.get(reverse("planner:archive"))
+        self.assertContains(page, 'id="archive-editor-form"')
+        self.assertContains(page, 'id="id_content"')
+        self.assertContains(page, 'js/archive_editor.js')
+        self.assertContains(page, 'window.scheduleEditLockScope = "archive"')
+
+        edit_url = reverse("planner:post-edit", args=[17])
+        lock_url = reverse("planner:schedule_edit_lock")
+        self.first.post(lock_url, {"action": "acquire", "token": "schedule-tab"})
+        denied = self.first.post(
+            edit_url,
+            {"content": "<p>New archive</p>", "edit_lock_token": "schedule-tab"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(denied.status_code, 409)
+
+        self.second.post(lock_url, {"action": "acquire", "token": "archive-tab", "scope": "archive"})
+        response = self.second.post(
+            edit_url,
+            {"content": "<p>New archive</p>", "edit_lock_token": "archive-tab"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Post.objects.get(pk=17).content, "<p>New archive</p>")
+
     def test_editor_gets_fresh_content_after_another_tab_saved(self):
         lock_url = reverse("planner:schedule_edit_lock")
         edit_url = reverse("planner:post-edit", args=[12])

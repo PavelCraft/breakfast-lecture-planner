@@ -6,14 +6,20 @@
       <h1>Снятие блокировки с редактирования</h1>
       {% if unlocked %}<div class="alert alert-success">Блокировка снята.</div>{% endif %}
       <div class="alert alert-warning mt-4">
-        <p>Когда один администратор редактирует большое расписание или отдельный день, редактирование блокируется для остальных. Это не даёт одному администратору случайно стереть изменения другого.</p>
+        <p>Большое расписание и отдельные дни используют общую блокировку, потому что их содержимое синхронизируется. У архива отдельная блокировка: его можно редактировать одновременно с расписанием.</p>
         <p>Перед снятием блокировки свяжитесь с другими администраторами и убедитесь, что ни у кого нет несохранённого текста. Если всегда нажимать «Сохранить» или «Отмена», эта кнопка не понадобится.</p>
       </div>
-      {% if edit_lock %}
-        <p>Сейчас редактирует: <strong>{{ edit_lock.user.get_username }}</strong>. Блокировка действует до {{ edit_lock.expires_at }}.</p>
-        <form method="post">{% csrf_token %}<button class="btn btn-danger" type="submit">Снять блокировку</button></form>
+      {% if edit_locks %}
+        {% for edit_lock in edit_locks %}
+          <p>{% if edit_lock.scope == 'archive' %}Архив{% else %}Большое расписание и дни{% endif %}: <strong>{{ edit_lock.user.get_username }}</strong>. Блокировка действует до {{ edit_lock.expires_at }}.</p>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="scope" value="{{ edit_lock.scope }}">
+            <button class="btn btn-danger" type="submit">Снять эту блокировку</button>
+          </form>
+        {% endfor %}
       {% else %}
-        <p>Сейчас расписание никто не редактирует.</p>
+        <p>Сейчас расписание и архив никто не редактирует.</p>
       {% endif %}
       <a href="{% url 'planner:cabinet' %}" class="btn btn-secondary mt-3">Назад</a>
     </div>

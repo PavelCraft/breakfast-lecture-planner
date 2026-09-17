@@ -29,6 +29,10 @@
     margin-bottom: 30px;
     }
 
+    #archive-editor .ck-editor__editable_inline {
+      min-height: 70vh;
+    }
+
   </style>
   <div class="grey">{% include "planner/includes/menu.html" %}</div>
   {% include "includes/decorative-header.html" %}
@@ -52,6 +56,23 @@
           {% endfor %}
           {% if not data %}{{ content|safe }}{% endif %}
         </div>
+        {% if archive_editor %}
+          <div id="archive-editor" class="main-post-editor" hidden>
+            <form id="archive-editor-form" class="main-post-editor-form">
+              {% csrf_token %}
+              <div class="main-post-editor-actions">
+                <button type="submit" class="btn btn-success">Сохранить</button>
+                <button type="button" class="btn btn-secondary close-archive-editor">Отмена</button>
+              </div>
+              {{ editor_form.media }}
+              {{ editor_form.content }}
+              <div class="main-post-editor-actions">
+                <button type="submit" class="btn btn-success">Сохранить</button>
+                <button type="button" class="btn btn-secondary close-archive-editor">Отмена</button>
+              </div>
+            </form>
+          </div>
+        {% endif %}
         {% include "planner/includes/button-edit-down.html" %}
       </div>
       <div class="col-md-5 order-md-2 order-1">
@@ -75,6 +96,15 @@
     </footer>
   </div>
   <br>
+  {% if archive_editor %}
+    <script>
+      window.scheduleEditLockUrl = "{% url 'planner:schedule_edit_lock' %}";
+      window.scheduleEditLockScope = "archive";
+      window.archiveEditUrl = "{% url 'planner:post-edit' object.pk %}";
+    </script>
+    <script src="{% static 'js/schedule_edit_lock.js' %}"></script>
+    <script src="{% static 'js/archive_editor.js' %}" defer></script>
+  {% else %}
   <script>
     const editPostButtonUp = document.getElementById('edit-post-btn-up');
     const editPostFormUp = document.getElementById('edit-post-form-up');
@@ -145,6 +175,7 @@
         });
     });
   </script>
+  {% endif %}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
           integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
           crossorigin="anonymous"></script>

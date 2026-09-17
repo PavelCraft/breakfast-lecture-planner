@@ -1,5 +1,6 @@
 (() => {
   const token = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  const scope = window.scheduleEditLockScope || "schedule";
   let owner = null;
   let heartbeat = null;
   const csrfToken = () => document.querySelector('[name="csrfmiddlewaretoken"]')?.value || "";
@@ -9,6 +10,7 @@
     body.append("csrfmiddlewaretoken", csrfToken());
     body.append("action", action);
     body.append("token", token);
+    body.append("scope", scope);
     const response = await fetch(window.scheduleEditLockUrl, {
       method: "POST", body, headers: { "X-Requested-With": "XMLHttpRequest" },
     });
@@ -50,6 +52,7 @@
     body.append("csrfmiddlewaretoken", csrfToken());
     body.append("action", "release");
     body.append("token", token);
+    body.append("scope", scope);
     navigator.sendBeacon(window.scheduleEditLockUrl, body);
   });
 })();

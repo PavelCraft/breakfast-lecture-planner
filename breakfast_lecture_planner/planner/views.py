@@ -40,14 +40,14 @@ def is_admin(user):
 LOCK_LIFETIME = timedelta(hours=2)
 
 
-def _active_schedule_lock():
+def _active_schedule_lock(scope="schedule"):
     ScheduleEditLock.objects.filter(expires_at__lte=timezone.now()).delete()
-    return ScheduleEditLock.objects.select_related("user").first()
+    return ScheduleEditLock.objects.select_related("user").filter(scope=scope).first()
 
 
-def _owns_schedule_lock(request):
+def _owns_schedule_lock(request, scope="schedule"):
     token = request.POST.get("edit_lock_token", "")
-    lock = _active_schedule_lock()
+    lock = _active_schedule_lock(scope)
     return bool(lock and lock.token == token and lock.user_id == request.user.id)
 
 
@@ -342,11 +342,14 @@ class ScheduleEditLockView(View):
     def post(self, request):
         action = request.POST.get("action")
         token = request.POST.get("token", "")
+        scope = request.POST.get("scope", "schedule")
+        if scope not in {"schedule", "archive"}:
+            return JsonResponse({"error": "Неизвестная область редактирования."}, status=400)
         if not token:
             return JsonResponse({"error": "Не передан идентификатор вкладки."}, status=400)
         with transaction.atomic():
-            Post.objects.select_for_update().get(pk=12)
-            lock = _active_schedule_lock()
+            Post.objects.select_for_update().get(pk=12 if scope == "schedule" else 17)
+            lock = _active_schedule_lock(scope)
             if action == "acquire":
                 if lock and (lock.token != token or lock.user_id != request.user.id):
                     return JsonResponse({
@@ -357,10 +360,10 @@ class ScheduleEditLockView(View):
                     lock.expires_at = timezone.now() + LOCK_LIFETIME
                     lock.save(update_fields=["expires_at"])
                 else:
-                    ScheduleEditLock.objects.create(user=request.user, token=token, expires_at=timezone.now() + LOCK_LIFETIME)
+                    ScheduleEditLock.objects.create(scope=scope, user=request.user, token=token, expires_at=timezone.now() + LOCK_LIFETIME)
                 return JsonResponse({"acquired": True})
             if action == "release":
-                ScheduleEditLock.objects.filter(token=token, user=request.user).delete()
+                ScheduleEditLock.objects.filter(scope=scope, token=token, user=request.user).delete()
                 return JsonResponse({"released": True})
         return JsonResponse({"error": "Неизвестное действие."}, status=400)
 
@@ -371,11 +374,20 @@ class ScheduleEditUnlockView(View):
     template_name = "planner/schedule_edit_unlock.html"
 
     def get(self, request):
-        return render(request, self.template_name, {"edit_lock": _active_schedule_lock()})
+        _active_schedule_lock()
+        return render(request, self.template_name, {
+            "edit_locks": ScheduleEditLock.objects.select_related("user").order_by("scope"),
+        })
 
     def post(self, request):
-        ScheduleEditLock.objects.all().delete()
-        return render(request, self.template_name, {"edit_lock": None, "unlocked": True})
+        scope = request.POST.get("scope")
+        if scope not in {"schedule", "archive"}:
+            return JsonResponse({"error": "Неизвестная область редактирования."}, status=400)
+        ScheduleEditLock.objects.filter(scope=scope).delete()
+        return render(request, self.template_name, {
+            "edit_locks": ScheduleEditLock.objects.select_related("user").order_by("scope"),
+            "unlocked": True,
+        })
 
 
 class Main(View):
@@ -637,11 +649,14 @@ class PostUpdateView(UpdateView):
     def get(self, request, *args, **kwargs):
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             post = self.get_object()
-            try:
-                day_dates = [day.date.isoformat() for day in parse_schedule(post.content, reference_date=timezone.localdate()).days]
-            except ScheduleStructureError:
-                day_dates = []
-            period = CalendarPeriod.objects.order_by("-starts_on").first()
+            day_dates = []
+            period = None
+            if post.pk == 12:
+                try:
+                    day_dates = [day.date.isoformat() for day in parse_schedule(post.content, reference_date=timezone.localdate()).days]
+                except ScheduleStructureError:
+                    pass
+                period = CalendarPeriod.objects.order_by("-starts_on").first()
             response = JsonResponse(
                 {
                     "id": post.pk,
@@ -656,7 +671,9 @@ class PostUpdateView(UpdateView):
         return super().get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        if self.kwargs.get("pk") == 12 and not _owns_schedule_lock(request):
+        post_id = self.kwargs.get("pk")
+        scope = "archive" if post_id == 17 else "schedule"
+        if post_id in {12, 17} and not _owns_schedule_lock(request, scope):
             return JsonResponse(
                 {"error": "Блокировка редактирования истекла или принадлежит другой вкладке."}, status=409
             )
@@ -675,7 +692,10 @@ class PostUpdateView(UpdateView):
                         "Ошибка разбора большого расписания",
                         f"Большое текстовое поле сохранено, но дневные расписания не обновлены.\n\n{error}",
                     )
-            return JsonResponse({"content": decorated_main_content(markdown(self.object.content)), "warning": warning})
+            rendered_content = markdown(self.object.content)
+            if self.object.pk == 12:
+                rendered_content = decorated_main_content(rendered_content)
+            return JsonResponse({"content": rendered_content, "warning": warning})
 
         return JsonResponse({"error": "Invalid form"}, status=400)
 
@@ -742,8 +762,18 @@ class Practice(PostDetailView):
 
 @method_decorator(login_required, name="dispatch")
 class ArchiveView(PostDetailView):
+    template_name = "planner/post.html"
+
     def get_object(self, queryset=None):
         return Post.objects.get(pk=17)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if is_admin(self.request.user):
+            context["editor_form"] = MainPostEditorForm(instance=self.object)
+            context["unified_editor"] = True
+            context["archive_editor"] = True
+        return context
 
 
 @method_decorator(login_required, name="dispatch")

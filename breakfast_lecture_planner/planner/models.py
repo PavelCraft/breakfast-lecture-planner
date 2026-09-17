@@ -124,6 +124,7 @@ class CalendarPeriod(models.Model):
 
 
 class ScheduleEditLock(models.Model):
+    scope = models.CharField(max_length=16, default="schedule", unique=True)
     user = models.ForeignKey(
         "auth.User", on_delete=models.CASCADE, related_name="schedule_edit_locks"
     )
