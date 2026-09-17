@@ -1,9 +1,8 @@
 import html
 import re
-from datetime import date, datetime, time, timedelta
-from math import pi
+from datetime import date, datetime, timedelta
 
-from calendar_utils.utils import get_next_day_with_time, lunch_registration_deadline
+from calendar_utils.utils import lunch_countdown_context, lunch_registration_deadline
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.conf import settings
 from django.db import models, transaction
@@ -138,13 +137,7 @@ class CombinedView(DetailView):
         context["lunch_form"] = LunchParticipantForm(prefix="lunch")
         context["feedback_form"] = FeedbackForm(prefix="feedback")
         context["recaptcha_site_key"] = settings.RECAPTCHA_PUBLIC_KEY
-        registration_now = timezone.now()
-        registration_deadline = lunch_registration_deadline(registration_now)
-        context["lunch_registration_closed"] = registration_deadline is None
-        context["lunch_registration_remaining_ms"] = (
-            max(0, int((registration_deadline - registration_now).total_seconds() * 1000))
-            if registration_deadline else 0
-        )
+        context.update(lunch_countdown_context())
 
         not_schedule_text = data["not_schedule_text"]
         del data["not_schedule_text"]
@@ -225,25 +218,6 @@ class CombinedView(DetailView):
 
         context["data"] = data
 
-        countdown = [
-            {"value": 0, "label": _("days"), "degrees": 0},
-            {"value": 0, "label": _("hours"), "degrees": 0},
-            {"value": 0, "label": _("min"), "degrees": 0},
-            {"value": 0, "label": _("sec"), "degrees": 0},
-        ]
-
-        remaining_seconds = (context["lunch_registration_remaining_ms"] + 999) // 1000
-        for unit, value in zip(countdown, (
-            remaining_seconds // 86400,
-            (remaining_seconds % 86400) // 3600,
-            (remaining_seconds % 3600) // 60,
-            remaining_seconds % 60,
-        )):
-            unit["value"] = value
-            unit["stroke_dasharray"] = 0
-
-        # Отправляем в контекст
-        context["countdown"] = countdown
         # Добавляем список групп, которым будет разрешено редактирование страницы
         context["allowed_groups"] = ["Админ"]
         if self.request.user.is_authenticated and is_admin(self.request.user):
@@ -394,65 +368,7 @@ class Main(View):
     template_name = "planner/main.html"
 
     def get(self, request):
-        countdown = [
-            {"value": 0, "label": "days", "degrees": 0},
-            {"value": 0, "label": "hours", "degrees": 0},
-            {"value": 0, "label": "min", "degrees": 0},
-            {"value": 0, "label": "sec", "degrees": 0},
-        ]
-
-        now = datetime.strptime("13.12.24 17:59:59", "%d.%m.%y %H:%M:%S")
-        now = datetime.now()
-        current_weekday = now.weekday()
-        today = datetime.strptime("13.12.24", "%d.%m.%y")
-        today = date.today()
-
-        if not (
-            current_weekday == 4 and now.time() > time(17, 0) or (current_weekday == 5)
-        ):
-
-            context = {
-                "target_day": 4,
-                "target_time": (17, 0, 0),
-                "current_weekday": current_weekday,
-                "current_date": today,
-                "now": now,
-            }
-            next_friday_17 = get_next_day_with_time(context)
-            print(next_friday_17)
-            delta = next_friday_17 - now
-            print(delta, type(delta))
-            print(delta.days, delta.seconds)
-            days = delta.days
-            hours = delta.seconds // 3600
-            minutes = (delta.seconds % 3600) // 60
-            seconds = delta.seconds % 60
-
-            countdown[0]["value"] = days
-            countdown[0]["degrees"] = 360 - (days / 7 * 360)
-
-            for index, time_element in enumerate(countdown[1:]):
-
-                value = [hours, minutes, seconds][index]
-                print(value)
-                countdown[index + 1]["value"] = value
-                countdown[index + 1]["degrees"] = 360 - (value / 60 * 360)
-
-        # Радиус окружности
-        radius = 41
-        # Длина окружности (2 * π * радиус)
-        circumference = 2 * pi * radius
-
-        # Добавляем в каждый элемент списка расчёт значения для stroke-dasharray
-        for unit in countdown:
-            # Рассчитываем длину дуги для текущего прогресса
-            unit["stroke_dasharray"] = (unit["degrees"] / 360) * circumference
-
-        # Отправляем в контекст
-        context = {
-            "countdown": countdown,
-        }
-        return render(request, self.template_name, context)
+        return render(request, self.template_name, lunch_countdown_context())
 
 
 @method_decorator(login_required, name="dispatch")
@@ -586,55 +502,7 @@ class PostDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         post = self.get_object()
         context["content"] = markdown(post.content)
-        countdown = [
-            {"value": 0, "label": "days", "degrees": 0},
-            {"value": 0, "label": "hours", "degrees": 0},
-            {"value": 0, "label": "min", "degrees": 0},
-            {"value": 0, "label": "sec", "degrees": 0},
-        ]
-
-        now = datetime.strptime("13.12.24 17:59:59", "%d.%m.%y %H:%M:%S")
-        now = datetime.now()
-        current_weekday = now.weekday()
-        today = datetime.strptime("13.12.24", "%d.%m.%y")
-        today = date.today()
-
-        if not (
-            current_weekday == 4 and now.time() > time(17, 0) or (current_weekday == 5)
-        ):
-
-            context.update(
-                {
-                    "target_day": 4,
-                    "target_time": (17, 0, 0),
-                    "current_weekday": current_weekday,
-                    "current_date": today,
-                    "now": now,
-                }
-            )
-
-            next_friday_17 = get_next_day_with_time(context)
-            context["next_friday_17"] = (
-                next_friday_17.year,
-                next_friday_17.month,
-                next_friday_17.day,
-                next_friday_17.hour,
-                next_friday_17.minute,
-                next_friday_17.second,
-            )
-
-            riga_now = timezone.localtime(timezone.now())
-            context["now_tuple"] = (
-                riga_now.year,
-                riga_now.month,
-                riga_now.day,
-                riga_now.hour,
-                riga_now.minute,
-                riga_now.second,
-            )
-
-        # Отправляем в контекст
-        context["countdown"] = countdown
+        context.update(lunch_countdown_context())
         context["allowed_groups"] = ["Админ"]
         return context
 

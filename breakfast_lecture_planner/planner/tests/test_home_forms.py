@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from calendar_utils.utils import lunch_registration_deadline
+from calendar_utils.utils import lunch_countdown_context, lunch_registration_deadline
 from planner.models import Feedback, LunchParticipant, Post
 
 
@@ -40,8 +40,21 @@ class HomeFormsTests(TestCase):
         self.assertEqual(lunch_registration_deadline(at(20, 4)), at(25, 22))
         self.assertEqual(lunch_registration_deadline(at(20, 12)), at(25, 22))
 
+    def test_countdown_is_shared_by_home_and_public_content_pages(self):
+        Post.objects.create(pk=14, title="Calendar", content="Calendar")
+        now = timezone.make_aware(datetime(2026, 9, 18, 21, 30), timezone.get_current_timezone())
+        with patch("calendar_utils.utils.timezone.now", return_value=now):
+            remaining = lunch_countdown_context()["lunch_registration_remaining_ms"]
+            home = self.client.get(reverse("planner:new"))
+            calendar = self.client.get(reverse("planner:vaishnava_calendar"))
+        self.assertGreater(remaining, 0)
+        marker = f'data-registration-remaining-ms="{remaining}"'
+        self.assertContains(home, marker)
+        self.assertContains(calendar, marker)
+
     @patch("planner.views.lunch_registration_deadline", return_value=None)
-    def test_closed_registration_has_no_home_form_and_rejects_post(self, deadline):
+    @patch("calendar_utils.utils.lunch_registration_deadline", return_value=None)
+    def test_closed_registration_has_no_home_form_and_rejects_post(self, countdown_deadline, view_deadline):
         page = self.client.get(reverse("planner:new"))
         self.assertContains(page, 'data-registration-remaining-ms="0"')
         self.assertNotContains(page, 'data-home-form="lunch"')

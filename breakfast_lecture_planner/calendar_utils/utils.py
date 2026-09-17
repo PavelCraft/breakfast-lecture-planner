@@ -1,6 +1,8 @@
 from datetime import date, datetime, time, timedelta
+from math import pi
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 
 def lunch_registration_deadline(now=None):
@@ -19,6 +21,34 @@ def lunch_registration_deadline(now=None):
         "now": local_now,
     })
     return timezone.make_aware(deadline, timezone.get_current_timezone())
+
+
+def lunch_countdown_context(now=None):
+    """Provide one countdown source for every page that displays the timer."""
+    now = now or timezone.now()
+    deadline = lunch_registration_deadline(now)
+    remaining_ms = max(0, int((deadline - now).total_seconds() * 1000)) if deadline else 0
+    seconds = (remaining_ms + 999) // 1000
+    values = (
+        seconds // 86400,
+        (seconds % 86400) // 3600,
+        (seconds % 3600) // 60,
+        seconds % 60,
+    )
+    circumference = 2 * pi * 41
+    countdown = []
+    for value, label, maximum in zip(values, (_("days"), _("hours"), _("min"), _("sec")), (7, 24, 60, 60)):
+        countdown.append({
+            "value": value,
+            "label": label,
+            "stroke_dasharray": (1 - min(value / maximum, 1)) * circumference,
+        })
+    return {
+        "countdown": countdown,
+        "circumference": circumference,
+        "lunch_registration_closed": deadline is None,
+        "lunch_registration_remaining_ms": remaining_ms,
+    }
 
 
 def get_weeks_in_year(year):
@@ -82,17 +112,3 @@ def get_next_day_with_time(context: dict) -> datetime:
     return target_datetime
 
 
-now = datetime.strptime("13.12.24 17:59:59", "%d.%m.%y %H:%M:%S")  # datetime.now()
-now = datetime.now()
-current_weekday = now.weekday()
-today = datetime.strptime("13.12.24", "%d.%m.%y")  # date.today()
-today = date.today()
-context = {
-    "target_day": 4,
-    "target_time": (17, 0, 0),
-    "current_weekday": current_weekday,
-    "current_date": today,
-    "now": now,
-}
-this_friday_17 = get_next_day_with_time(context)
-# print("this_friday_17 =", this_friday_17)
