@@ -1,12 +1,12 @@
-from datetime import datetime, time
-
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from django_ckeditor_5.widgets import CKEditor5Widget
 from django_recaptcha.fields import ReCaptchaField
 from django_recaptcha.widgets import ReCaptchaV3
 
-from .models import DailySchedule, Feedback, Image, LunchParticipant, Post
+from calendar_utils.utils import lunch_registration_deadline
+
+from .models import DailySchedule, Feedback, HomeScene, Image, LunchParticipant, Post
 
 
 class PostForm(forms.ModelForm):
@@ -55,6 +55,19 @@ class ImageUploadForm(forms.ModelForm):
         fields = ["image"]
 
 
+class HomeSceneForm(forms.ModelForm):
+    class Meta:
+        model = HomeScene
+        fields = ["background", "object_image"]
+        labels = {"background": "Фон", "object_image": "Объект"}
+
+    def clean_background(self):
+        background = self.cleaned_data.get("background")
+        if not background and not self.instance.background:
+            raise forms.ValidationError("Загрузите фон.")
+        return background
+
+
 class LunchParticipantForm(forms.ModelForm):
     # Скрытое от пользователей поле, предназначенное для заполнения роботами
     phone = forms.CharField(
@@ -63,7 +76,7 @@ class LunchParticipantForm(forms.ModelForm):
     )
 
     # Добавляем reCAPTCHA v3
-    captcha = ReCaptchaField(widget=ReCaptchaV3)
+    captcha = ReCaptchaField(widget=ReCaptchaV3(action="lunch_registration"))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -83,12 +96,8 @@ class LunchParticipantForm(forms.ModelForm):
             cleaned_data["robot"] = True
         # Логика вычисления даты
         # now = datetime.strptime("14.12.24 23:59:59", "%d.%m.%y %H:%M:%S")
-        now = datetime.now()
-        current_weekday = now.weekday()
-
-        if current_weekday == 4 and now.time() > time(17, 0) or (current_weekday == 5):
+        if lunch_registration_deadline() is None:
             cleaned_data["error_message"] = "Registration is over"
-        print(cleaned_data)
         return cleaned_data
 
     class Meta:
@@ -116,7 +125,7 @@ class FeedbackForm(forms.ModelForm):
         widget=forms.TextInput(attrs={"placeholder": _("Your phone number"), "style": "opacity:0;"}),
     )
 
-    captcha = ReCaptchaField(widget=ReCaptchaV3)
+    captcha = ReCaptchaField(widget=ReCaptchaV3(action="feedback"))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -147,7 +156,6 @@ class FeedbackForm(forms.ModelForm):
             print("Форму отравляет робот")
             cleaned_data.pop("phone")
             cleaned_data["robot"] = True
-        print(cleaned_data)
         return cleaned_data
 
     def clean_text(self):

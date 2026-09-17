@@ -450,13 +450,6 @@
   font-size: 2rem;
 }
 
-.schedule-calendar__today-label {
-  position: absolute;
-  top: -2px;
-  color: #746b66;
-  font-size: 0.72rem;
-}
-
 .schedule-calendar__date:focus-visible .schedule-calendar__date-number {
   outline: 3px solid #9f2525;
   outline-offset: 3px;
@@ -467,6 +460,7 @@
 }
 
 .schedule-calendar__schedules {
+  position: relative;
   display: flex;
   justify-content: center;
   overflow: visible;
@@ -682,12 +676,12 @@
 
 .schedule-calendar__week-viewport {
   position: relative;
-  padding-top: 34px;
+  padding-top: 39px;
 }
 
 .schedule-calendar__kartika-bar {
   position: absolute;
-  top: 15px;
+  top: 20px;
   height: 5px;
   border-radius: 999px;
   background: #75539b;

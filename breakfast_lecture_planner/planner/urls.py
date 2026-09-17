@@ -26,17 +26,7 @@ urlpatterns = [
     path("contacts/", views.ContactsView.as_view(), name="contacts"),
     path("faq/", views.FaqView.as_view(), name="faq"),
     path("images/", views.ImageListView.as_view(), name="image_list"),
-    path("images/upload/", views.ImageUploadView.as_view(), name="image_upload"),
-    path(
-        "images/add-to-home/<int:image_id>/",
-        views.AddToHomeView.as_view(),
-        name="add_to_home",
-    ),
-    path(
-        "images/delete/<int:image_id>/",
-        views.DeleteImageView.as_view(),
-        name="delete_image",
-    ),
+    path("images/scene-layout/", views.HomeSceneLayoutView.as_view(), name="home_scene_layout"),
     path("registracija/", views.LunchRegistrationView.as_view(), name="lunch_register"),
     path("lunch/success/", views.LunchSuccessView.as_view(), name="lunch_success"),
     path("lunch_closed/", views.LunchClosedView.as_view(), name="lunch_closed"),

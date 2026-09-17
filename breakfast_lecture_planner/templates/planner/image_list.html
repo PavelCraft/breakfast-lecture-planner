@@ -1,59 +1,27 @@
 {% extends 'auth.html' %}
-{% load static %}
-{% block title %}
-  Загруженные изображения
-{% endblock title %}
+{% block title %}Изображения на главной{% endblock title %}
 {% block content %}
-  <div class="container mt-4">
-    <h1 class="mb-4">Загруженные изображения</h1>
-    <a href="{% url 'planner:image_upload' %}" class="btn btn-primary mb-3">Загрузить новое изображение</a>
+<div class="container mt-4">
+  <h1 class="mb-3">Изображения на главной</h1>
+  <p>Загрузите фон и объект отдельно. Их расположение настраивается прямо на главной странице.</p>
+  <p>Чтобы акула «выныривала» из волны, используйте фон с прозрачной областью над водой и объект с прозрачным фоном. Непрозрачная часть фона перекроет нижнюю часть объекта.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
     <div class="row">
-      {% for image in images %}
-        <div class="col-md-4 mb-3">
-          <div class="card">
-            <img src="{{ image.image.url }}" class="card-img-top" alt="Image">
-            <div class="card-body">
-              <h5 class="card-title">Изображение загружено: {{ image.uploaded_at }}</h5>
-              <button class="btn btn-success add-to-home" data-image-id="{{ image.id }}">Добавить на Главную</button>
-              <a href="{% url 'planner:delete_image' image.id %}"
-                 class="btn btn-danger">Удалить</a>
-            </div>
-          </div>
-        </div>
-      {% empty %}
-        <div class="alert alert-warning" role="alert">Изображения не найдены.</div>
-      {% endfor %}
+      <div class="col-md-6 mb-3">
+        <label for="{{ form.background.id_for_label }}" class="form-label">Фон</label>
+        {% if home_scene.background %}<div class="mb-2"><img src="{{ home_scene.background.url }}" alt="Текущий фон" class="img-fluid" style="max-height:200px"></div>{% endif %}
+        {{ form.background }}{{ form.background.errors }}
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="{{ form.object_image.id_for_label }}" class="form-label">Объект</label>
+        {% if home_scene.object_image %}<div class="mb-2"><img src="{{ home_scene.object_image.url }}" alt="Текущий объект" class="img-fluid" style="max-height:200px"></div>{% endif %}
+        {{ form.object_image }}{{ form.object_image.errors }}
+      </div>
     </div>
-    <div class="d-flex justify-content-between align-items-center my-3">
-      <a href="{% url 'planner:cabinet' %}" class="btn btn-secondary ms-auto">Назад</a>
-    </div>
-  </div>
-  <script>
-    document.querySelectorAll('.add-to-home').forEach(button => {
-        button.addEventListener('click', function() {
-            const imageId = this.getAttribute('data-image-id');
-            fetch(`{% url 'planner:add_to_home' '0' %}`.replace('0', imageId), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
-                }
-                throw new Error('Ошибка при добавлении изображения');
-            })
-            .then(data => {
-                if (data.success) {
-                    alert(data.message); // Показываем сообщение об успешном добавлении
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                alert('Произошла ошибка при добавлении изображения');
-            });
-        });
-    });
-  </script>
+    <button type="submit" class="btn btn-primary">Сохранить изображения</button>
+    <a href="{% url 'planner:new' %}" class="btn btn-secondary">На главную для настройки</a>
+  </form>
+</div>
 {% endblock content %}

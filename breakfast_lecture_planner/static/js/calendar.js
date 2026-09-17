@@ -44,6 +44,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let weekVersion = 0;
     let renderVersion = 0;
     let cacheGeneration = 0;
+    let lastRenderedDate = null;
+    let navigationAnimations = [];
+    let navigationOverlays = [];
     selectedDate.setHours(12, 0, 0, 0);
 
     const copyDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
@@ -57,6 +60,22 @@ document.addEventListener("DOMContentLoaded", () => {
       String(date.getMonth() + 1).padStart(2, "0"),
       String(date.getDate()).padStart(2, "0"),
     ].join("-");
+
+    const initialDateKey = new URL(window.location.href).searchParams.get("calendar_date");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(initialDateKey || "")) {
+      const [year, month, day] = initialDateKey.split("-").map(Number);
+      const requestedDate = new Date(year, month - 1, day, 12);
+      if (dateKey(requestedDate) === initialDateKey) selectedDate = requestedDate;
+    }
+
+    function rememberSelectedDate() {
+      const url = new URL(window.location.href);
+      url.searchParams.set("calendar_date", dateKey(selectedDate));
+      window.history.replaceState(window.history.state, "", url);
+      document.querySelectorAll('.language-switcher form input[name="next"]').forEach(input => {
+        input.value = url.pathname + url.search + url.hash;
+      });
+    }
 
     async function loadSchedule(date, forceRefresh = false) {
       const key = dateKey(date);
@@ -93,14 +112,10 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
       if (dateKey(date) === dateKey(new Date())) {
         button.classList.add("is-today");
-        const label = document.createElement("span");
-        label.className = "schedule-calendar__today-label";
-        label.textContent = locale.startsWith("lt") ? "Šiandien" : "Today";
-        button.append(label);
       }
       button.addEventListener("click", () => {
         selectedDate = copyDate(date);
-        render();
+        render(true);
       });
       return button;
     }
@@ -284,8 +299,52 @@ document.addEventListener("DOMContentLoaded", () => {
       schedules.replaceChildren(selectedCard);
     }
 
-    function render() {
+    function slideReplacement(container, incoming, outgoing, distance) {
+      if (!incoming || !outgoing) return;
+      outgoing.setAttribute("aria-hidden", "true");
+      outgoing.inert = true;
+      Object.assign(outgoing.style, {
+        position: "absolute",
+        left: `${incoming.offsetLeft}px`,
+        top: `${incoming.offsetTop}px`,
+        width: `${incoming.offsetWidth}px`,
+        height: `${incoming.offsetHeight}px`,
+        margin: "0",
+        pointerEvents: "none",
+        zIndex: "2",
+      });
+      container.append(outgoing);
+      navigationOverlays.push(outgoing);
+      const options = { duration: 500, easing: "cubic-bezier(.42, 0, .58, 1)" };
+      navigationAnimations.push(incoming.animate([
+        { transform: `translateX(${distance}px)`, opacity: 0.8 },
+        { transform: "translateX(0)", opacity: 1 },
+      ], options));
+      const outgoingAnimation = outgoing.animate([
+        { transform: "translateX(0)", opacity: 1 },
+        { transform: `translateX(${-distance}px)`, opacity: 0 },
+      ], options);
+      navigationAnimations.push(outgoingAnimation);
+      outgoingAnimation.finished.then(() => outgoing.remove(), () => outgoing.remove());
+    }
+
+    function render(updateAddress = false) {
       const version = ++renderVersion;
+      const daysMoved = lastRenderedDate
+        ? Math.round((selectedDate - lastRenderedDate) / 86400000)
+        : 0;
+      const animateNavigation = daysMoved && updateAddress &&
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches && !editingCard;
+      navigationAnimations.forEach((animation) => animation.cancel());
+      navigationOverlays.forEach((overlay) => overlay.remove());
+      navigationAnimations = [];
+      navigationOverlays = [];
+      const outgoingWeek = animateNavigation ? week.cloneNode(true) : null;
+      const outgoingCard = animateNavigation
+        ? schedules.querySelector(".schedule-calendar__schedule-card")?.cloneNode(true)
+        : null;
+      lastRenderedDate = copyDate(selectedDate);
+      if (updateAddress) rememberSelectedDate();
       monthSelect.value = String(selectedDate.getMonth());
       if (!Array.from(yearSelect.options).some((option) => Number(option.value) === selectedDate.getFullYear())) {
         yearSelect.add(new Option(String(selectedDate.getFullYear()), String(selectedDate.getFullYear())));
@@ -299,11 +358,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       });
       renderSchedules();
+      if (animateNavigation) {
+        const direction = Math.sign(daysMoved);
+        const weekDistance = direction * Math.min(Math.abs(daysMoved), 7) * week.clientWidth / 7;
+        slideReplacement(week.parentElement, week, outgoingWeek, weekDistance);
+        const card = schedules.querySelector(".schedule-calendar__schedule-card");
+        slideReplacement(schedules, card, outgoingCard, direction * Math.min(150, schedules.clientWidth / 4));
+      }
     }
 
     function changeDate(days) {
       selectedDate = shiftedDate(selectedDate, days);
-      render();
+      render(true);
     }
 
     dailyScheduleForm?.addEventListener("submit", async (event) => {
@@ -343,13 +409,13 @@ document.addEventListener("DOMContentLoaded", () => {
     calendar.querySelector("[data-calendar-day-next]").addEventListener("click", () => changeDate(1));
     monthSelect.addEventListener("change", () => {
       selectedDate = new Date(selectedDate.getFullYear(), Number(monthSelect.value), 1, 12);
-      render();
+      render(true);
     });
     yearSelect.addEventListener("change", () => {
       const year = Number(yearSelect.value);
       const day = Math.min(selectedDate.getDate(), new Date(year, selectedDate.getMonth() + 1, 0).getDate());
       selectedDate = new Date(year, selectedDate.getMonth(), day, 12);
-      render();
+      render(true);
     });
 
     let swipeStartX = null;

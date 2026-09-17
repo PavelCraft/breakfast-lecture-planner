@@ -1,0 +1,112 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<link rel="stylesheet" href="{% static 'css/home_forms.css' %}">
+<dialog class="home-form-dialog" data-home-form-dialog
+        data-captcha-key="{{ recaptcha_site_key }}"
+        data-lunch-url="{% url 'planner:lunch_register' %}"
+        data-feedback-url="{% url 'planner:feedback' %}"
+        data-registration-remaining-ms="{{ lunch_registration_remaining_ms }}"
+        data-network-error="{% if LANGUAGE_CODE == 'lt' %}Nepavyko išsiųsti. Patikrinkite ryšį ir bandykite dar kartą.{% else %}Could not send your request. Check your connection and try again.{% endif %}"
+        data-captcha-error="{% if LANGUAGE_CODE == 'lt' %}Nepavyko patikrinti reCAPTCHA. Bandykite dar kartą.{% else %}Could not verify reCAPTCHA. Please try again.{% endif %}">
+  <div class="home-form-dialog__card">
+    <button type="button" class="home-form-dialog__close" data-home-form-close
+            aria-label="{% if LANGUAGE_CODE == 'lt' %}Uždaryti{% else %}Close{% endif %}">×</button>
+
+    <section data-home-form-panel="lunch">
+      <h2 class="home-form-dialog__title home-form-dialog__title--lunch">
+        {% if LANGUAGE_CODE == 'lt' %}Registracija šeštadienio pietums{% else %}Saturday lunch registration{% endif %}
+      </h2>
+      <p class="home-form-dialog__subtitle">
+        {% if LANGUAGE_CODE == 'lt' %}Vyksta iki penktadienio 17:00{% else %}Open until Friday at 17:00{% endif %}
+      </p>
+        <p class="home-form-dialog__notice" data-home-lunch-closed-notice {% if not lunch_registration_closed %}hidden{% endif %}>
+          {% if LANGUAGE_CODE == 'lt' %}Registracija šiuo metu uždaryta.{% else %}Registration is currently closed.{% endif %}
+        </p>
+      {% if not lunch_registration_closed %}
+        <form action="{% url 'planner:lunch_register' %}" method="post" data-home-form="lunch" novalidate>
+          {% csrf_token %}
+          <div class="home-form-dialog__honeypot" aria-hidden="true">{{ lunch_form.phone }}</div>
+          <input type="hidden" name="{{ lunch_form.captcha.html_name }}" data-captcha-token>
+          <label class="visually-hidden" for="{{ lunch_form.name.id_for_label }}">
+            {% if LANGUAGE_CODE == 'lt' %}Jūsų vardas{% else %}Your name{% endif %}
+          </label>
+          {{ lunch_form.name }}
+          <div class="home-form-dialog__portions">
+            <label for="home-lunch-portions">
+              {% if LANGUAGE_CODE == 'lt' %}Nurodykite porcijų kiekį{% else %}Number of portions{% endif %}
+            </label>
+            <div class="home-form-dialog__stepper">
+              <button type="button" data-portions-minus aria-label="{% if LANGUAGE_CODE == 'lt' %}Mažiau porcijų{% else %}Fewer portions{% endif %}">−</button>
+              <input id="home-lunch-portions" name="{{ lunch_form.portions.html_name }}" type="number"
+                     min="1" max="15" step="1" value="1" inputmode="numeric"
+                     aria-label="{% if LANGUAGE_CODE == 'lt' %}Porcijų kiekis{% else %}Number of portions{% endif %}">
+              <button type="button" data-portions-plus aria-label="{% if LANGUAGE_CODE == 'lt' %}Daugiau porcijų{% else %}More portions{% endif %}">+</button>
+            </div>
+          </div>
+          <label class="visually-hidden" for="{{ lunch_form.email.id_for_label }}">Email</label>
+          {{ lunch_form.email }}
+          <details class="home-form-dialog__optional">
+            <summary>{% if LANGUAGE_CODE == 'lt' %}Pridėti komentarą (nebūtina){% else %}Add a comment (optional){% endif %}</summary>
+            <label class="visually-hidden" for="{{ lunch_form.comment.id_for_label }}">
+              {% if LANGUAGE_CODE == 'lt' %}Komentaras{% else %}Comment{% endif %}
+            </label>
+            {{ lunch_form.comment }}
+          </details>
+          <div class="home-form-dialog__errors" data-form-errors role="alert" aria-live="polite" hidden></div>
+          <div class="home-form-dialog__actions">
+            <button type="submit" class="home-form-dialog__primary">
+              {% if LANGUAGE_CODE == 'lt' %}Patvirtinti{% else %}Confirm{% endif %}
+            </button>
+            <button type="button" class="home-form-dialog__secondary" data-home-form-switch="feedback">
+              {% if LANGUAGE_CODE == 'lt' %}Susisiekite su mumis{% else %}Contact us{% endif %}
+            </button>
+          </div>
+        </form>
+      {% endif %}
+    </section>
+
+    <section data-home-form-panel="feedback" hidden>
+      <h2 class="home-form-dialog__title">
+        {% if LANGUAGE_CODE == 'lt' %}Pasidalykite savo nuomone apie mus!{% else %}Please let us know what you think about us!{% endif %}
+      </h2>
+      <p class="home-form-dialog__subtitle">
+        {% if LANGUAGE_CODE == 'lt' %}Laukiame jūsų pasiūlymų.{% else %}All your suggestions are welcome.{% endif %}
+      </p>
+      <form action="{% url 'planner:feedback' %}" method="post" data-home-form="feedback" novalidate>
+        {% csrf_token %}
+        <div class="home-form-dialog__honeypot" aria-hidden="true">{{ feedback_form.phone }}</div>
+        <input type="hidden" name="{{ feedback_form.captcha.html_name }}" data-captcha-token>
+        <label class="visually-hidden" for="{{ feedback_form.name.id_for_label }}">
+          {% if LANGUAGE_CODE == 'lt' %}Jūsų vardas{% else %}Your name{% endif %}
+        </label>
+        {{ feedback_form.name }}
+        <label class="visually-hidden" for="{{ feedback_form.email.id_for_label }}">Email</label>
+        {{ feedback_form.email }}
+        <label class="visually-hidden" for="{{ feedback_form.text.id_for_label }}">
+          {% if LANGUAGE_CODE == 'lt' %}Jūsų žinutė{% else %}Your message{% endif %}
+        </label>
+        {{ feedback_form.text }}
+        <div class="home-form-dialog__errors" data-form-errors role="alert" aria-live="polite" hidden></div>
+        <div class="home-form-dialog__actions">
+          <button type="submit" class="home-form-dialog__primary">
+            {% if LANGUAGE_CODE == 'lt' %}Patvirtinti{% else %}Confirm{% endif %}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="home-form-dialog__success" data-home-form-panel="success" hidden>
+      <img src="{% static 'img/new_logo.png' %}" alt="ISKCON Vilnius" class="home-form-dialog__logo">
+      <h2>{% if LANGUAGE_CODE == 'lt' %}Ačiū Jums!{% else %}Thank you!{% endif %}</h2>
+      <p data-home-form-success="lunch" hidden>
+        {% if LANGUAGE_CODE == 'lt' %}Laukiame Jūsų artimiausią šeštadienį. Pietų pradžia 13:30.{% else %}We look forward to seeing you this Saturday. Lunch begins at 13:30.{% endif %}
+      </p>
+      <p data-home-form-success="feedback" hidden>
+        {% if LANGUAGE_CODE == 'lt' %}Gavome jūsų žinutę. Ačiū, kad padedate mums tobulėti.{% else %}We received your message. Thank you for helping us improve.{% endif %}
+      </p>
+      <button type="button" class="home-form-dialog__primary" data-home-form-close>OK</button>
+    </section>
+  </div>
+</dialog>
+<script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}" async defer></script>
+<script src="{% static 'js/home_forms.js' %}" defer></script>

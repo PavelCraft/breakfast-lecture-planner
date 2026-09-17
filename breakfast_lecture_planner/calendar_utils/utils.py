@@ -1,4 +1,22 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
+
+from django.utils import timezone
+
+
+def lunch_registration_deadline(now=None):
+    """Return this week's Friday 17:00 in Riga, or None while registration is closed."""
+    now = timezone.localtime(now or timezone.now())
+    if now.weekday() == 5 or (now.weekday() == 4 and now.time() >= time(17, 0)):
+        return None
+    local_now = now.replace(tzinfo=None)
+    deadline = get_next_day_with_time({
+        "target_day": 4,
+        "target_time": (17, 0, 0),
+        "current_weekday": local_now.weekday(),
+        "current_date": local_now.date(),
+        "now": local_now,
+    })
+    return timezone.make_aware(deadline, timezone.get_current_timezone())
 
 
 def get_weeks_in_year(year):

@@ -186,6 +186,7 @@ logs/
 certbot/
 backups/
 .deploy-state
+/Макеты/
 
 /Calendar.png
 /Снимок экрана от 2026-08-14 07-13-21.png

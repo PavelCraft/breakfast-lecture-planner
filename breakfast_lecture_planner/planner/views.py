@@ -3,8 +3,9 @@ import re
 from datetime import date, datetime, time, timedelta
 from math import pi
 
-from calendar_utils.utils import get_next_day_with_time
+from calendar_utils.utils import get_next_day_with_time, lunch_registration_deadline
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.conf import settings
 from django.db import models, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,6 +13,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views import View
 from django.views.generic import DeleteView, DetailView, ListView
 from django.views.generic.edit import CreateView, UpdateView
@@ -19,13 +21,13 @@ from markdown import markdown
 
 from .forms import (
     FeedbackForm,
-    ImageUploadForm,
+    HomeSceneForm,
     LunchParticipantForm,
     MainPostEditorForm,
     DailyScheduleForm,
     PostForm,
 )
-from .models import CalendarPeriod, DailySchedule, Image, LunchParticipant, Post, ScheduleEditLock
+from .models import CalendarPeriod, DailySchedule, HomeScene, LunchParticipant, Post, ScheduleEditLock
 from .services.calendar_markers import categories_in_html, decorated_main_content, public_day_content
 from .services.schedule_parser import ScheduleStructureError, parse_schedule
 from .services.schedule_sync import sync_daily_schedules, sync_day_to_main_schedule
@@ -64,6 +66,7 @@ class FaqView(View):
         return render(request, self.template_name)
 
 
+@method_decorator(xframe_options_sameorigin, name="dispatch")
 class CombinedView(DetailView):
     model = Post
     template_name = "planner/combined.html"
@@ -131,7 +134,17 @@ class CombinedView(DetailView):
         context["content"] = markdown(
             post.content if is_ckeditor_html else highlighted_content
         )
-        context["image"] = post.image
+        context["home_scene"] = HomeScene.objects.filter(pk=1).first()
+        context["lunch_form"] = LunchParticipantForm(prefix="lunch")
+        context["feedback_form"] = FeedbackForm(prefix="feedback")
+        context["recaptcha_site_key"] = settings.RECAPTCHA_PUBLIC_KEY
+        registration_now = timezone.now()
+        registration_deadline = lunch_registration_deadline(registration_now)
+        context["lunch_registration_closed"] = registration_deadline is None
+        context["lunch_registration_remaining_ms"] = (
+            max(0, int((registration_deadline - registration_now).total_seconds() * 1000))
+            if registration_deadline else 0
+        )
 
         not_schedule_text = data["not_schedule_text"]
         del data["not_schedule_text"]
@@ -219,77 +232,15 @@ class CombinedView(DetailView):
             {"value": 0, "label": _("sec"), "degrees": 0},
         ]
 
-        now = datetime.strptime("13.12.24 17:59:59", "%d.%m.%y %H:%M:%S")
-        now = datetime.now()
-        current_weekday = now.weekday()
-        today = datetime.strptime("13.12.24", "%d.%m.%y")
-        today = date.today()
-
-        if not (
-            current_weekday == 4 and now.time() > time(17, 0) or (current_weekday == 5)
-        ):
-
-            context.update(
-                {
-                    "target_day": 4,
-                    "target_time": (17, 0, 0),
-                    "current_weekday": current_weekday,
-                    "current_date": today,
-                    "now": now,
-                }
-            )
-
-            next_friday_17 = get_next_day_with_time(context)
-            # print(next_friday_17, type(next_friday_17))
-            context["next_friday_17"] = (
-                next_friday_17.year,
-                next_friday_17.month,
-                next_friday_17.day,
-                next_friday_17.hour,
-                next_friday_17.minute,
-                next_friday_17.second,
-            )
-
-            riga_now = timezone.localtime(timezone.now())
-            print("riga_now =", riga_now)
-            context["now_tuple"] = (
-                riga_now.year,
-                riga_now.month,
-                riga_now.day,
-                riga_now.hour,
-                riga_now.minute,
-                riga_now.second,
-            )
-            # context["now_tuple"] = (2025, 3, 13, 2, 59, 45)
-            # context["now_tuple"] = (2025, 3, 13, 16, 58, 55)
-            delta = next_friday_17 - now
-            print(delta, type(delta))
-            print(delta.days, delta.seconds)
-            days = delta.days
-            hours = delta.seconds // 3600
-            minutes = (delta.seconds % 3600) // 60
-            seconds = delta.seconds % 60
-
-        #     countdown[0]["value"] = days
-        #     countdown[0]["degrees"] = 360 - (days / 7 * 360)
-        #     print('Угол дня countdown[0]["degrees"] =', countdown[0]["degrees"])
-
-        #     for index, time_element in enumerate(countdown[1:]):
-
-        #         value = [hours, minutes, seconds][index]
-        #         print(value)
-        #         countdown[index + 1]["value"] = value
-        #         countdown[index + 1]["degrees"] = 360 - (value / 60 * 360)
-
-        # # Радиус окружности
-        # radius = 41
-        # # Длина окружности (2 * π * радиус)
-        # circumference = 2 * pi * radius
-
-        # # Добавляем в каждый элемент списка расчёт значения для stroke-dasharray
-        # for unit in countdown:
-        #     # Рассчитываем длину дуги для текущего прогресса
-        #     unit['stroke_dasharray'] = (unit['degrees'] / 360) * circumference
+        remaining_seconds = (context["lunch_registration_remaining_ms"] + 999) // 1000
+        for unit, value in zip(countdown, (
+            remaining_seconds // 86400,
+            (remaining_seconds % 86400) // 3600,
+            (remaining_seconds % 3600) // 60,
+            remaining_seconds % 60,
+        )):
+            unit["value"] = value
+            unit["stroke_dasharray"] = 0
 
         # Отправляем в контекст
         context["countdown"] = countdown
@@ -795,56 +746,59 @@ class ArchiveView(PostDetailView):
         return Post.objects.get(pk=17)
 
 
+@method_decorator(login_required, name="dispatch")
 class ImageListView(View):
     def get(self, request):
-        images = Image.objects.all()  # Получаем все изображения
-        context = {"images": images}
+        scene = HomeScene.objects.filter(pk=1).first()
+        context = {"form": HomeSceneForm(instance=scene), "home_scene": scene}
         return render(request, "planner/image_list.html", context)
 
-
-class ImageUploadView(View):
-    def get(self, request):
-        form = ImageUploadForm()
-        return render(request, "planner/image_upload.html", {"form": form})
-
     def post(self, request):
-        form = ImageUploadForm(request.POST, request.FILES)
+        scene = HomeScene.objects.filter(pk=1).first() or HomeScene(pk=1)
+        form = HomeSceneForm(request.POST, request.FILES, instance=scene)
         if form.is_valid():
             form.save()
-            return redirect(
-                "planner:image_list"
-            )  # Перенаправление на страницу со списком изображений
-        return render(request, "planner/image_upload.html", {"form": form})
+            return redirect("planner:image_list")
+        return render(request, "planner/image_list.html", {"form": form, "home_scene": scene}, status=400)
 
 
-class DeleteImageView(View):
-    def get(self, request, image_id):
-        image = get_object_or_404(Image, id=image_id)
-        image.delete()
-        return redirect("planner:image_list")
+@method_decorator(login_required, name="dispatch")
+class HomeSceneLayoutView(View):
+    def post(self, request):
+        import json
 
-
-class AddToHomeView(View):
-    def get(self, request, image_id):
-        image = get_object_or_404(Image, id=image_id)
-        post = get_object_or_404(Post, pk=12)  # Получаем пост с pk=12
-        post.image = image  # Устанавливаем изображение
-        post.save()  # Сохраняем изменения
-        return JsonResponse(
-            {"success": True, "message": "Изображение добавлено на главную!"}
-        )
-
+        scene = HomeScene.objects.filter(pk=1).first()
+        if not scene or not scene.background:
+            return JsonResponse({"error": "Сначала загрузите фон."}, status=400)
+        try:
+            submitted = json.loads(request.body)
+            limits = {
+                "background_height": (160, 1800),
+                "background_y": (-1000, 1000),
+                "object_x": (-50, 150),
+                "object_y": (-1000, 1800),
+                "object_width": (30, 1000),
+            }
+            layout = {}
+            for name in ("watch", "smartphone", "shovel", "tablet", "computer", "tv"):
+                values = submitted[name]
+                layout[name] = {}
+                for key, (minimum, maximum) in limits.items():
+                    value = float(values[key])
+                    if not value.is_integer() or not minimum <= value <= maximum:
+                        raise ValueError(key)
+                    layout[name][key] = int(value)
+        except (TypeError, ValueError, KeyError, OverflowError):
+            return JsonResponse({"error": "Некорректные настройки оформления."}, status=400)
+        scene.layout = layout
+        scene.save(update_fields=["layout", "updated_at"])
+        return JsonResponse({"success": True})
 
 class LunchRegistrationView(View):
     template_name = "planner/registration_or_feedback.html"
 
     def get(self, request):
-        # Логика вычисления даты
-        # now = datetime.strptime("20.12.24 17:00:01", "%d.%m.%y %H:%M:%S")
-        now = datetime.now()
-        current_weekday = now.weekday()
-
-        if current_weekday == 4 and now.time() > time(17, 0) or (current_weekday == 5):
+        if lunch_registration_deadline() is None:
             error_message = "Registration is over"
             return redirect(
                 f"{reverse('planner:lunch_closed')}?message={error_message}"
@@ -864,14 +818,24 @@ class LunchRegistrationView(View):
         )
 
     def post(self, request):
-        form = LunchParticipantForm(request.POST)
-        print("Мы в методе post")
+        ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        if lunch_registration_deadline() is None:
+            if ajax:
+                return JsonResponse({"closed": True}, status=400)
+            return redirect(f"{reverse('planner:lunch_closed')}?message=Registration is over")
+        form = LunchParticipantForm(request.POST, prefix="lunch" if ajax else None)
 
         # Защита от спама роботов
         if form.is_valid():
             if form.cleaned_data.get("robot"):
                 print("Это робот")
+                if ajax:
+                    return JsonResponse({"success": True})
                 return redirect("planner:lunch_success")
+            if lunch_registration_deadline() is None:
+                if ajax:
+                    return JsonResponse({"closed": True}, status=400)
+                return redirect(f"{reverse('planner:lunch_closed')}?message=Registration is over")
             if not form.cleaned_data.get("error_message"):
                 participant = form.save()
 
@@ -889,13 +853,23 @@ class LunchRegistrationView(View):
 
                 queue_admin_notification(subject, message, participant.email)
 
+                if ajax:
+                    return JsonResponse({"success": True})
                 return redirect("planner:lunch_success")
 
         print("Форма не валидна")
         if form.cleaned_data.get("error_message"):
             error_message = form.cleaned_data.get("error_message")
+            if ajax:
+                return JsonResponse({"closed": True}, status=400)
             return redirect(
                 f"{reverse('planner:lunch_closed')}?message={error_message}"
+            )
+
+        if ajax:
+            return JsonResponse(
+                {"errors": {field: list(messages) for field, messages in form.errors.items()}},
+                status=400,
             )
 
         return render(
@@ -965,10 +939,13 @@ class FeedbackView(View):
         return render(request, self.template_name, context)
 
     def post(self, request):
-        form = FeedbackForm(request.POST)
+        ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        form = FeedbackForm(request.POST, prefix="feedback" if ajax else None)
         if form.is_valid():
             if form.cleaned_data.get("robot"):
                 print("Это робот")
+                if ajax:
+                    return JsonResponse({"success": True})
                 return redirect("planner:feedback_success")
 
             feedback = form.save()
@@ -977,9 +954,17 @@ class FeedbackView(View):
             message = f"Пользователь по имени {feedback.name} с email {feedback.email}, оставил обратную связь:\n{feedback.text}"
             queue_admin_notification(subject, message, feedback.email)
 
+            if ajax:
+                return JsonResponse({"success": True})
             return redirect(
                 "planner:feedback_success"
             )  # Перенаправление на страницу успеха
+
+        if ajax:
+            return JsonResponse(
+                {"errors": {field: list(messages) for field, messages in form.errors.items()}},
+                status=400,
+            )
 
         context = self.get_context_data()
         context["form"] = form

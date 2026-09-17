@@ -25,6 +25,23 @@ class Image(models.Model):
         return f"Image uploaded at {self.uploaded_at}"
 
 
+def default_home_scene_layout():
+    return {
+        name: {"background_height": 520, "background_y": 0,
+               "object_x": 75, "object_y": 0, "object_width": 220}
+        for name in ("watch", "smartphone", "shovel", "tablet", "computer", "tv")
+    }
+
+
+class HomeScene(models.Model):
+    """The published decorative layers and their responsive placement."""
+
+    background = models.ImageField(upload_to="home_scene/backgrounds/", blank=True)
+    object_image = models.ImageField(upload_to="home_scene/objects/", blank=True)
+    layout = models.JSONField(default=default_home_scene_layout)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class LunchParticipant(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField()

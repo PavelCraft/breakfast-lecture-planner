@@ -131,12 +131,109 @@
       </div>
     </div>
   </header>
+  {% include "planner/includes/home_forms.html" %}
+  {% if home_scene.background %}
+    <link rel="stylesheet" href="{% static 'css/home_scene.css' %}">
+    {{ home_scene.layout|json_script:"home-scene-layout" }}
+    <style id="home-scene-published-style">
+      .home-scene {
+        --scene-bg-height: {{ home_scene.layout.tv.background_height }}px;
+        --scene-bg-y: {{ home_scene.layout.tv.background_y }}px;
+        --scene-object-x: {{ home_scene.layout.tv.object_x }}%;
+        --scene-object-y: {{ home_scene.layout.tv.object_y }}px;
+        --scene-object-width: {{ home_scene.layout.tv.object_width }}px;
+      }
+      @media (max-width: 1699px) {
+        .home-scene:not(.home-scene--preview) {
+          --scene-bg-height: {{ home_scene.layout.computer.background_height }}px;
+          --scene-bg-y: {{ home_scene.layout.computer.background_y }}px;
+          --scene-object-x: {{ home_scene.layout.computer.object_x }}%;
+          --scene-object-y: {{ home_scene.layout.computer.object_y }}px;
+          --scene-object-width: {{ home_scene.layout.computer.object_width }}px;
+        }
+      }
+      @media (max-width: 1199px) {
+        .home-scene:not(.home-scene--preview) {
+          --scene-bg-height: {{ home_scene.layout.tablet.background_height }}px;
+          --scene-bg-y: {{ home_scene.layout.tablet.background_y }}px;
+          --scene-object-x: {{ home_scene.layout.tablet.object_x }}%;
+          --scene-object-y: {{ home_scene.layout.tablet.object_y }}px;
+          --scene-object-width: {{ home_scene.layout.tablet.object_width }}px;
+        }
+      }
+      @media (max-width: 800px) {
+        .home-scene:not(.home-scene--preview) {
+          --scene-bg-height: {{ home_scene.layout.shovel.background_height }}px;
+          --scene-bg-y: {{ home_scene.layout.shovel.background_y }}px;
+          --scene-object-x: {{ home_scene.layout.shovel.object_x }}%;
+          --scene-object-y: {{ home_scene.layout.shovel.object_y }}px;
+          --scene-object-width: {{ home_scene.layout.shovel.object_width }}px;
+        }
+      }
+      @media (max-width: 520px) {
+        .home-scene:not(.home-scene--preview) {
+          --scene-bg-height: {{ home_scene.layout.smartphone.background_height }}px;
+          --scene-bg-y: {{ home_scene.layout.smartphone.background_y }}px;
+          --scene-object-x: {{ home_scene.layout.smartphone.object_x }}%;
+          --scene-object-y: {{ home_scene.layout.smartphone.object_y }}px;
+          --scene-object-width: {{ home_scene.layout.smartphone.object_width }}px;
+        }
+      }
+      @media (max-width: 360px) {
+        .home-scene:not(.home-scene--preview) {
+          --scene-bg-height: {{ home_scene.layout.watch.background_height }}px;
+          --scene-bg-y: {{ home_scene.layout.watch.background_y }}px;
+          --scene-object-x: {{ home_scene.layout.watch.object_x }}%;
+          --scene-object-y: {{ home_scene.layout.watch.object_y }}px;
+          --scene-object-width: {{ home_scene.layout.watch.object_width }}px;
+        }
+      }
+    </style>
+  {% endif %}
+  {% if home_scene.background and user.is_authenticated and not request.GET.scene_preview %}
+    <div class="home-scene-editor" data-home-scene-editor data-save-url="{% url 'planner:home_scene_layout' %}" hidden>
+      <div class="home-scene-editor__toolbar">
+        <div role="group" aria-label="Размер экрана">
+          <button type="button" data-scene-preset="watch">Часы</button>
+          <button type="button" data-scene-preset="smartphone">Смартфон</button>
+          <button type="button" data-scene-preset="shovel">Лопата</button>
+          <button type="button" data-scene-preset="tablet">Планшет</button>
+          <button type="button" data-scene-preset="computer">Комп</button>
+          <button type="button" data-scene-preset="tv">TV</button>
+        </div>
+        <div role="group" aria-label="Сохранение оформления">
+          <button type="button" data-scene-save>Сохранить</button>
+          <button type="button" data-scene-cancel>Отмена</button>
+        </div>
+      </div>
+      <div class="home-scene-editor__controls">
+        <label>Высота фона <input type="range" data-scene-field="background_height" min="160" max="1800" step="1"><output data-scene-output="background_height"></output></label>
+        <label>Фон выше/ниже <input type="range" data-scene-field="background_y" min="-1000" max="1000" step="1"><output data-scene-output="background_y"></output></label>
+        {% if home_scene.object_image %}
+          <label>Объект левее/правее <input type="range" data-scene-field="object_x" min="-50" max="150" step="1"><output data-scene-output="object_x"></output></label>
+          <label>Объект выше/ниже <input type="range" data-scene-field="object_y" min="-1000" max="1800" step="1"><output data-scene-output="object_y"></output></label>
+          <label>Размер объекта <input type="range" data-scene-field="object_width" min="30" max="1000" step="1"><output data-scene-output="object_width"></output></label>
+        {% endif %}
+      </div>
+      <p data-scene-message role="status"></p>
+      <div class="home-scene-editor__preview-viewport" data-scene-preview-viewport>
+        <iframe class="home-scene-editor__preview" data-scene-preview title="Предпросмотр оформления"></iframe>
+      </div>
+    </div>
+    <button class="home-scene-open" type="button" data-scene-open>Настроить оформление</button>
+  {% endif %}
+  {% if home_scene.background %}<div class="home-scene" data-home-scene>
+    <div class="home-scene__art" aria-hidden="true">
+      {% if home_scene.object_image %}<img class="home-scene__object" src="{{ home_scene.object_image.url }}" alt="">{% endif %}
+      <img class="home-scene__background" src="{{ home_scene.background.url }}" alt="">
+    </div>
+  {% endif %}
   {% if user.is_authenticated %}
     <script>window.scheduleEditLockUrl = "{% url 'planner:schedule_edit_lock' %}";</script>
     <script src="{% static 'js/schedule_edit_lock.js' %}"></script>
     {% include "planner/includes/calendar.html" %}
   {% endif %}
-  <div class="container">
+  <div class="container home-scene__post">
   <div class="post index">
     {% if object.pk == 12 %}
       <a href="#today" id="up-icon">
@@ -179,9 +276,7 @@
       {% endif %}
       {% include "planner/includes/button-edit-down.html" %}
     </div>
-    <div class="col-md-5 order-md-2 order-1">
-      {% if image %}<img src="{{ image.image.url }}" class="img-fluid" alt="Post Image">{% endif %}
-    </div>
+    <div class="col-md-5 order-md-2 order-1"></div>
   </div>
   </div>
   <footer class="text-center mt-4 footer">
@@ -197,14 +292,16 @@
       <br>
       Harė Rama, Harė Rama, Rama Rama, Harė Harė
     </p>
+    {% include "planner/includes/footer_credit.html" %}
   </footer>
 </div>
+{% if home_scene.background %}</div>{% endif %}
 <br>
-<div id="elem1" class="hidden-element">{{ next_friday_17 }}</div>
-<div id="elem2" class="hidden-element">{{ now_tuple }}</div>
+<div id="elem1" class="hidden-element" data-registration-remaining-ms="{{ lunch_registration_remaining_ms }}"></div>
 
 <script src="{% static 'js/timer.js' %}"></script>
 <script src="{% static 'js/calendar_markers.js' %}" defer></script>
+{% if home_scene.background and user.is_authenticated %}<script src="{% static 'js/home_scene.js' %}" defer></script>{% endif %}
 
 <script>
   const editPostButtonUp = document.getElementById('edit-post-btn-up');

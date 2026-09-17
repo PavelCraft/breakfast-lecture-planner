@@ -1,0 +1,6 @@
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<p class="footer-credit" style="margin: 10px 0 0; font-size: .8rem; opacity: .72;">
+  {% if LANGUAGE_CODE == 'lt' %}Sukurta{% else %}Developed by{% endif %}
+  <a href="https://formacode.dev/en" style="color: inherit; text-decoration: underline; text-underline-offset: 2px;">FormaCode</a>
+</p>
