@@ -11,7 +11,7 @@ deploy:
 	@test -z "$$(git status --porcelain)" || \
 		(echo "Ошибка: сначала закоммитьте все локальные изменения."; git status --short; exit 1)
 	git push origin $(DEPLOY_BRANCH)
-	ssh $(DEPLOY_USER)@$(DEPLOY_HOST) 'cd $(DEPLOY_DIR) && ./deploy.sh'
+	ssh $(DEPLOY_USER)@$(DEPLOY_HOST) 'cd $(DEPLOY_DIR) && git pull --ff-only origin $(DEPLOY_BRANCH) && ./deploy.sh'
 
 rollback:
 	ssh $(DEPLOY_USER)@$(DEPLOY_HOST) 'cd $(DEPLOY_DIR) && ./rollback.sh'

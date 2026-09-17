@@ -56,7 +56,7 @@ echo "Сборка Docker-образа..."
 "${COMPOSE[@]}" build --pull breakfast_lecture_planner
 
 echo "Проверка запуска Gunicorn в новом образе..."
-docker run --rm --entrypoint python breakfast_lecture_planner \
+docker run --rm --entrypoint python breakfast_lecture_planner -I \
     -c 'from gunicorn.workers.ggevent import GeventWorker'
 
 echo "Запуск контейнеров..."
