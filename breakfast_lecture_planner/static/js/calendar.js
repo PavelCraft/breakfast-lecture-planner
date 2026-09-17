@@ -165,9 +165,105 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    async function hydrateScheduleCard(card, date) {
-      const data = await loadSchedule(date);
-      if (!card.isConnected || schedules.querySelector(".schedule-calendar__schedule-card") !== card) return;
+    function ringSizes() {
+      return new Map(Array.from(week.querySelectorAll(".schedule-calendar__date"), (button) => {
+        const ring = button.querySelector(".schedule-calendar__date-number");
+        const style = getComputedStyle(ring);
+        return [button.dataset.date, {
+          width: style.width,
+          height: style.height,
+          fontSize: style.fontSize,
+          borderWidth: style.borderWidth,
+        }];
+      }));
+    }
+
+    function datePositions() {
+      return new Map(Array.from(week.querySelectorAll(".schedule-calendar__date"), (button) => [
+        button.dataset.date,
+        { rect: button.getBoundingClientRect(), element: button.cloneNode(true) },
+      ]));
+    }
+
+    function animateDatePositions(previousPositions, direction) {
+      if (!previousPositions) return;
+      const buttons = Array.from(week.querySelectorAll(".schedule-calendar__date"));
+      const currentDates = new Set(buttons
+        .filter((button) => button.getBoundingClientRect().width > 0)
+        .map((button) => button.dataset.date));
+      const step = week.clientWidth / (window.matchMedia("(max-width: 800px)").matches ? 5 : 7);
+      const options = { duration: 1000, easing: "cubic-bezier(.42, 0, .58, 1)" };
+
+      buttons.forEach((button) => {
+        const end = button.getBoundingClientRect();
+        if (!end.width || !end.height) return;
+        const previous = previousPositions.get(button.dataset.date);
+        if (previous?.rect.width && previous.rect.height) {
+          const x = previous.rect.left - end.left;
+          const y = previous.rect.top - end.top;
+          if (x || y) {
+            navigationAnimations.push(button.animate([
+              { transform: `translate(${x}px, ${y}px)` },
+              { transform: "translate(0, 0)" },
+            ], options));
+          }
+        } else {
+          navigationAnimations.push(button.animate([
+            { transform: `translateX(${direction * step}px)`, opacity: 0 },
+            { transform: "translateX(0)", opacity: 1 },
+          ], options));
+        }
+      });
+
+      const viewport = week.parentElement;
+      const viewportRect = viewport.getBoundingClientRect();
+      previousPositions.forEach(({ rect, element }, date) => {
+        if (currentDates.has(date) || !rect.width || !rect.height) return;
+        element.setAttribute("aria-hidden", "true");
+        element.inert = true;
+        Object.assign(element.style, {
+          position: "absolute",
+          left: `${rect.left - viewportRect.left}px`,
+          top: `${rect.top - viewportRect.top}px`,
+          width: `${rect.width}px`,
+          height: `${rect.height}px`,
+          margin: "0",
+          pointerEvents: "none",
+          zIndex: "2",
+        });
+        viewport.append(element);
+        navigationOverlays.push(element);
+        const animation = element.animate([
+          { transform: "translateX(0)", opacity: 1 },
+          { transform: `translateX(${-direction * step}px)`, opacity: 0 },
+        ], options);
+        navigationAnimations.push(animation);
+        animation.finished.then(() => element.remove(), () => element.remove());
+      });
+    }
+
+    function animateDateRings(previousSizes) {
+      if (!previousSizes) return;
+      week.querySelectorAll(".schedule-calendar__date").forEach((button) => {
+        const previous = previousSizes.get(button.dataset.date);
+        if (!previous) return;
+        const ring = button.querySelector(".schedule-calendar__date-number");
+        const style = getComputedStyle(ring);
+        const current = {
+          width: style.width,
+          height: style.height,
+          fontSize: style.fontSize,
+          borderWidth: style.borderWidth,
+        };
+        if (Object.keys(current).every((key) => current[key] === previous[key])) return;
+        navigationAnimations.push(ring.animate([previous, current], {
+          duration: 1000,
+          easing: "cubic-bezier(.42, 0, .58, 1)",
+        }));
+      });
+    }
+
+    function hydrateScheduleCard(card, data) {
       const body = card.querySelector(".schedule-calendar__schedule-body");
       body.classList.remove("schedule-calendar__schedule-body--empty");
       body.innerHTML = data.exists && data.content.trim() ? data.content : "";
@@ -270,7 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
       editor.editing.view.focus();
     }
 
-    function createScheduleCard(date) {
+    function createScheduleCard(date, data) {
       const article = document.createElement("article");
       article.className = "schedule-calendar__schedule-card";
       article.dataset.date = dateKey(date);
@@ -289,13 +385,13 @@ document.addEventListener("DOMContentLoaded", () => {
       article.querySelector("[data-daily-schedule-edit]")?.addEventListener("click", () => {
         openDailyEditor(article, date);
       });
-      hydrateScheduleCard(article, date);
+      hydrateScheduleCard(article, data);
       return article;
     }
 
-    function renderSchedules() {
+    function renderSchedules(data) {
       if (editingCard) closeDailyEditor();
-      const selectedCard = createScheduleCard(selectedDate);
+      const selectedCard = createScheduleCard(selectedDate, data);
       schedules.replaceChildren(selectedCard);
     }
 
@@ -328,8 +424,44 @@ document.addEventListener("DOMContentLoaded", () => {
       outgoingAnimation.finished.then(() => outgoing.remove(), () => outgoing.remove());
     }
 
-    function render(updateAddress = false) {
+    function fadeScheduleCard(incoming, outgoing, geometry) {
+      const oldHeight = geometry.height;
+      const newHeight = incoming.getBoundingClientRect().height;
+      schedules.style.height = `${oldHeight}px`;
+      outgoing.setAttribute("aria-hidden", "true");
+      outgoing.inert = true;
+      Object.assign(outgoing.style, {
+        position: "absolute",
+        left: `${geometry.left}px`,
+        top: `${geometry.top}px`,
+        width: `${geometry.width}px`,
+        height: `${oldHeight}px`,
+        margin: "0",
+        pointerEvents: "none",
+        zIndex: "2",
+      });
+      schedules.append(outgoing);
+      navigationOverlays.push(outgoing);
+      const options = { duration: 1000, easing: "ease-in-out" };
+      navigationAnimations.push(incoming.animate([{ opacity: 0 }, { opacity: 1 }], options));
+      const outgoingAnimation = outgoing.animate([{ opacity: 1 }, { opacity: 0 }], options);
+      navigationAnimations.push(outgoingAnimation);
+      outgoingAnimation.finished.then(() => outgoing.remove(), () => outgoing.remove());
+      const heightAnimation = schedules.animate(
+        [{ height: `${oldHeight}px` }, { height: `${newHeight}px` }],
+        { duration: 1000, easing: "cubic-bezier(.42, 0, .58, 1)" }
+      );
+      navigationAnimations.push(heightAnimation);
+      heightAnimation.finished.then(
+        () => { schedules.style.height = ""; },
+        () => { schedules.style.height = ""; }
+      );
+    }
+
+    function render(updateAddress = false, animateRings = false) {
       const version = ++renderVersion;
+      const previousRingSizes = animateRings ? ringSizes() : null;
+      const previousDatePositions = animateRings ? datePositions() : null;
       const daysMoved = lastRenderedDate
         ? Math.round((selectedDate - lastRenderedDate) / 86400000)
         : 0;
@@ -339,10 +471,10 @@ document.addEventListener("DOMContentLoaded", () => {
       navigationOverlays.forEach((overlay) => overlay.remove());
       navigationAnimations = [];
       navigationOverlays = [];
-      const outgoingWeek = animateNavigation ? week.cloneNode(true) : null;
-      const outgoingCard = animateNavigation
-        ? schedules.querySelector(".schedule-calendar__schedule-card")?.cloneNode(true)
-        : null;
+      schedules.style.height = "";
+      // Day navigation morphs the circles in the new week; keeping the old
+      // week as an overlay would show a second, fading copy of each circle.
+      const outgoingWeek = animateNavigation && !animateRings ? week.cloneNode(true) : null;
       lastRenderedDate = copyDate(selectedDate);
       if (updateAddress) rememberSelectedDate();
       monthSelect.value = String(selectedDate.getMonth());
@@ -350,26 +482,44 @@ document.addEventListener("DOMContentLoaded", () => {
         yearSelect.add(new Option(String(selectedDate.getFullYear()), String(selectedDate.getFullYear())));
       }
       yearSelect.value = String(selectedDate.getFullYear());
-      renderWeek();
       loadSchedule(selectedDate).then((data) => {
         if (version !== renderVersion || dateKey(selectedDate) !== data.date) return;
+        const currentCard = animateNavigation
+          ? schedules.querySelector(".schedule-calendar__schedule-card")
+          : null;
+        const outgoingCard = currentCard?.cloneNode(true);
+        const outgoingGeometry = currentCard ? {
+          left: currentCard.offsetLeft,
+          top: currentCard.offsetTop,
+          width: currentCard.getBoundingClientRect().width,
+          height: currentCard.getBoundingClientRect().height,
+        } : null;
+        renderWeek();
+        if (animateNavigation && animateRings) {
+          animateDatePositions(previousDatePositions, Math.sign(daysMoved));
+          animateDateRings(previousRingSizes);
+        }
+        renderSchedules(data);
         categories.forEach((category) => {
           category.classList.toggle("is-active", (data.categories || []).includes(category.dataset.calendarCategory));
         });
+        if (animateNavigation) {
+          if (outgoingWeek) {
+            const direction = Math.sign(daysMoved);
+            const weekDistance = direction * Math.min(Math.abs(daysMoved), 7) * week.clientWidth / 7;
+            slideReplacement(week.parentElement, week, outgoingWeek, weekDistance);
+          }
+          const card = schedules.querySelector(".schedule-calendar__schedule-card");
+          if (outgoingCard && outgoingGeometry) {
+            fadeScheduleCard(card, outgoingCard, outgoingGeometry);
+          }
+        }
       });
-      renderSchedules();
-      if (animateNavigation) {
-        const direction = Math.sign(daysMoved);
-        const weekDistance = direction * Math.min(Math.abs(daysMoved), 7) * week.clientWidth / 7;
-        slideReplacement(week.parentElement, week, outgoingWeek, weekDistance);
-        const card = schedules.querySelector(".schedule-calendar__schedule-card");
-        slideReplacement(schedules, card, outgoingCard, direction * Math.min(150, schedules.clientWidth / 4));
-      }
     }
 
-    function changeDate(days) {
+    function changeDate(days, animateRings = false) {
       selectedDate = shiftedDate(selectedDate, days);
-      render(true);
+      render(true, animateRings);
     }
 
     dailyScheduleForm?.addEventListener("submit", async (event) => {
@@ -405,8 +555,8 @@ document.addEventListener("DOMContentLoaded", () => {
     calendar.querySelector("[data-daily-schedule-cancel]")?.addEventListener("click", closeDailyEditor);
     calendar.querySelector("[data-calendar-week-previous]").addEventListener("click", () => changeDate(-7));
     calendar.querySelector("[data-calendar-week-next]").addEventListener("click", () => changeDate(7));
-    calendar.querySelector("[data-calendar-day-previous]").addEventListener("click", () => changeDate(-1));
-    calendar.querySelector("[data-calendar-day-next]").addEventListener("click", () => changeDate(1));
+    calendar.querySelector("[data-calendar-day-previous]").addEventListener("click", () => changeDate(-1, true));
+    calendar.querySelector("[data-calendar-day-next]").addEventListener("click", () => changeDate(1, true));
     monthSelect.addEventListener("change", () => {
       selectedDate = new Date(selectedDate.getFullYear(), Number(monthSelect.value), 1, 12);
       render(true);
@@ -426,7 +576,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (swipeStartX === null) return;
       const movement = event.changedTouches[0].screenX - swipeStartX;
       swipeStartX = null;
-      if (Math.abs(movement) > 45) changeDate(movement < 0 ? 1 : -1);
+      if (Math.abs(movement) > 45) changeDate(movement < 0 ? 1 : -1, true);
     }, { passive: true });
 
     const refreshScheduleData = () => {

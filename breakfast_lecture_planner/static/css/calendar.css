@@ -462,6 +462,7 @@
 .schedule-calendar__schedules {
   position: relative;
   display: flex;
+  align-items: flex-start;
   justify-content: center;
   overflow: visible;
 }
