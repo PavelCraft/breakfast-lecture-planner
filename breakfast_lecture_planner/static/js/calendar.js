@@ -315,7 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       container.append(outgoing);
       navigationOverlays.push(outgoing);
-      const options = { duration: 500, easing: "cubic-bezier(.42, 0, .58, 1)" };
+      const options = { duration: 1000, easing: "cubic-bezier(.42, 0, .58, 1)" };
       navigationAnimations.push(incoming.animate([
         { transform: `translateX(${distance}px)`, opacity: 0.8 },
         { transform: "translateX(0)", opacity: 1 },

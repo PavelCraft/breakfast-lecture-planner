@@ -17,7 +17,7 @@
         {% if LANGUAGE_CODE == 'lt' %}Registracija šeštadienio pietums{% else %}Saturday lunch registration{% endif %}
       </h2>
       <p class="home-form-dialog__subtitle">
-        {% if LANGUAGE_CODE == 'lt' %}Vyksta iki penktadienio 17:00{% else %}Open until Friday at 17:00{% endif %}
+        {% if LANGUAGE_CODE == 'lt' %}Nuo sekmadienio 04:00 iki penktadienio 22:00{% else %}Open Sunday 04:00 – Friday 22:00{% endif %}
       </p>
         <p class="home-form-dialog__notice" data-home-lunch-closed-notice {% if not lunch_registration_closed %}hidden{% endif %}>
           {% if LANGUAGE_CODE == 'lt' %}Registracija šiuo metu uždaryta.{% else %}Registration is currently closed.{% endif %}

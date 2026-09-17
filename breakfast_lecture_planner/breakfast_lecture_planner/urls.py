@@ -18,10 +18,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from planner.views import PageNotFoundView
+from planner.seo import robots_txt, sitemap
 
 handler404 = PageNotFoundView.as_view()
 
 urlpatterns = [
+    path("robots.txt", robots_txt, name="robots_txt"),
+    path("sitemap.xml", sitemap, name="sitemap"),
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
     path("", include("planner.urls")),

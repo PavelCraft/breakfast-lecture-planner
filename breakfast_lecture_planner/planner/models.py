@@ -1,6 +1,6 @@
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 
-from calendar_utils.utils import get_next_day_with_time
+from calendar_utils.utils import lunch_registration_deadline
 from django.db import models
 from django.utils import timezone
 from django_ckeditor_5.fields import CKEditor5Field
@@ -54,22 +54,10 @@ class LunchParticipant(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.date:
-            print("self.date =", self.date)
-            now = datetime.now()
-            current_weekday = now.weekday()
-            today = date.today()
-            context = {
-                "target_day": 4,
-                "target_time": (17, 0, 0),
-                "current_weekday": current_weekday,
-                "current_date": today,
-                "now": now,
-            }
-            # Получаем объект datetime ближайшей пятницы 17:00
-            this_friday_17 = get_next_day_with_time(context)
-            # print("метод save", "this_friday_17 =", this_friday_17)
-            self.date = (this_friday_17 + timedelta(days=1)).date()
-            # print(self.date)
+            deadline = lunch_registration_deadline()
+            if deadline is None:
+                raise ValueError("Lunch registration is closed")
+            self.date = (deadline + timedelta(days=1)).date()
 
         super().save(*args, **kwargs)
 

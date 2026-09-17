@@ -62,6 +62,8 @@ ALLOWED_HOSTS = [
 ]
 
 
+SEO_SITE_URL = "https://malone.guru"
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -110,6 +112,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "planner.context_processors.menu.menu",
                 "planner.context_processors.year.year",
+                "planner.seo.seo_context",
             ],
         },
     },

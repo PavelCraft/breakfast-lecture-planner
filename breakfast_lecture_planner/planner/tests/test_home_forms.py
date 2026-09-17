@@ -17,6 +17,9 @@ class HomeFormsTests(TestCase):
     def test_home_has_independent_prefixed_forms_and_one_captcha_loader(self):
         response = self.client.get(reverse("planner:new"))
 
+        self.assertContains(response, 'data-schedule-calendar')
+        self.assertNotContains(response, 'class="post-content"')
+        self.assertNotContains(response, 'id="main-post-editor"')
         self.assertContains(response, 'data-home-form="feedback"')
         self.assertContains(response, 'name="feedback-captcha"')
         self.assertContains(response, 'data-lunch-url=')
@@ -24,16 +27,18 @@ class HomeFormsTests(TestCase):
         if b'data-home-form="lunch"' in response.content:
             self.assertContains(response, 'name="lunch-captcha"')
 
-    def test_deadline_uses_riga_time_and_closes_at_friday_17(self):
+    def test_deadline_uses_riga_time_and_sunday_to_friday_window(self):
         zone = timezone.get_current_timezone()
         at = lambda day, hour, minute=0: timezone.make_aware(
             datetime(2026, 9, day, hour, minute), zone
         )
-        self.assertEqual(lunch_registration_deadline(at(17, 12)), at(18, 17))
-        self.assertEqual(lunch_registration_deadline(at(18, 16, 59)), at(18, 17))
-        self.assertIsNone(lunch_registration_deadline(at(18, 17)))
+        self.assertEqual(lunch_registration_deadline(at(17, 12)), at(18, 22))
+        self.assertEqual(lunch_registration_deadline(at(18, 21, 59)), at(18, 22))
+        self.assertIsNone(lunch_registration_deadline(at(18, 22)))
         self.assertIsNone(lunch_registration_deadline(at(19, 12)))
-        self.assertEqual(lunch_registration_deadline(at(20, 12)), at(25, 17))
+        self.assertIsNone(lunch_registration_deadline(at(20, 3, 59)))
+        self.assertEqual(lunch_registration_deadline(at(20, 4)), at(25, 22))
+        self.assertEqual(lunch_registration_deadline(at(20, 12)), at(25, 22))
 
     @patch("planner.views.lunch_registration_deadline", return_value=None)
     def test_closed_registration_has_no_home_form_and_rejects_post(self, deadline):

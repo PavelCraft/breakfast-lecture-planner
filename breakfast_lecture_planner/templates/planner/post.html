@@ -1,8 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}
-  {{ title }}
-{% endblock title %}
+{% block title %}{% if seo_title %}{{ seo_title }}{% else %}{{ title }}{% endif %}{% endblock title %}
 {% block content %}
   <style>
     body {

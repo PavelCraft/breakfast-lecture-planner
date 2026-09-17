@@ -1,8 +1,6 @@
 {% extends 'new_base.html' %}
 {% load static i18n %}
-{% block title %}
-  {{ title }}
-{% endblock title %}
+{% block title %}{% if seo_title %}{{ seo_title }}{% else %}{{ title }}{% endif %}{% endblock title %}
 {% block content %}
 <style>
     /* body {
@@ -228,11 +226,12 @@
       <img class="home-scene__background" src="{{ home_scene.background.url }}" alt="">
     </div>
   {% endif %}
-  {% if user.is_authenticated %}
+  {% if editor_form %}
     <script>window.scheduleEditLockUrl = "{% url 'planner:schedule_edit_lock' %}";</script>
     <script src="{% static 'js/schedule_edit_lock.js' %}"></script>
-    {% include "planner/includes/calendar.html" %}
   {% endif %}
+  {% include "planner/includes/calendar.html" %}
+  {% if editor_form %}
   <div class="container home-scene__post">
   <div class="post index">
     {% if object.pk == 12 %}
@@ -279,6 +278,7 @@
     <div class="col-md-5 order-md-2 order-1"></div>
   </div>
   </div>
+  {% endif %}
   <footer class="text-center mt-4 footer">
     <a href="{% url 'users:login' %}">
       <img src="{% static 'img/logo-orange.png' %}"
@@ -300,10 +300,10 @@
 <div id="elem1" class="hidden-element" data-registration-remaining-ms="{{ lunch_registration_remaining_ms }}"></div>
 
 <script src="{% static 'js/timer.js' %}"></script>
-<script src="{% static 'js/calendar_markers.js' %}" defer></script>
+{% if editor_form %}<script src="{% static 'js/calendar_markers.js' %}" defer></script>{% endif %}
 {% if home_scene.background and user.is_authenticated %}<script src="{% static 'js/home_scene.js' %}" defer></script>{% endif %}
 
-<script>
+{% if editor_form %}<script>
   const editPostButtonUp = document.getElementById('edit-post-btn-up');
   const editPostButtonDown = document.getElementById('edit-post-btn-down');
   const mainPostEditor = document.getElementById('main-post-editor');
@@ -427,5 +427,5 @@
           console.error(error);
       });
   });
-</script>
+</script>{% endif %}
 {% endblock content %}
