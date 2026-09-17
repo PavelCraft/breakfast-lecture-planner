@@ -3,8 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const monthSelect = calendar.querySelector("[data-calendar-month]");
     const yearSelect = calendar.querySelector("[data-calendar-year]");
     const week = calendar.querySelector("[data-calendar-week]");
-    const previousWeekDays = calendar.querySelector("[data-calendar-week-previous-days]");
-    const nextWeekDays = calendar.querySelector("[data-calendar-week-next-days]");
+    const kartikaBar = calendar.querySelector("[data-calendar-kartika-bar]");
     const schedules = calendar.querySelector("[data-calendar-schedules]");
     const categories = Array.from(calendar.querySelectorAll("[data-calendar-category]"));
     const scheduleUrl = calendar.dataset.scheduleUrl;
@@ -19,20 +18,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const locale = calendar.dataset.locale || "en";
     const weekdayNames = calendar.dataset.weekdaysShort.split("|");
     const weekdayNamesLong = calendar.dataset.weekdaysLong.split("|");
-    const categoryColors = ["#F28C38", "#EB364B", "#50CC2F", "#229191"];
-    const scheduleHeaderColors = ["#F2CAA9", "#F6B7B4", "#B4E2A1", "#B3DFF1"];
-    const demoSchedules = [
-      ["7:50 — „Šrimad-Bhagavatam“ paskaita", "9:30 — Pusryčiai", "11:00 — Sekmadieninė svečių programa", "13:30 — Sekmadieniniai pietūs", "15:00 — Harinama"],
-      ["7:50 — Šrilos Prabhupados paskaita", "9:30 — Pusryčiai", "18:00 — Vakaro programa"],
-      ["7:50 — „Šrimad-Bhagavatam“ paskaita", "9:30 — Pusryčiai", "18:30 — „Bhagavad-gitos“ skaitiniai"],
-      ["7:50 — „Šrimad-Bhagavatam“ paskaita", "9:30 — Pusryčiai", "17:00 — Kirtanų vakaras", "19:00 — Prasadas"],
-      ["7:50 — „Šrimad-Bhagavatam“ paskaita", "9:30 — Pusryčiai", "18:30 — Bhakta programa"],
-      ["7:50 — „Šrimad-Bhagavatam“ paskaita", "Registracija šeštadienio pietums iki 17:00", "9:30 — Pusryčiai", "18:00 — Vakaro programa"],
-      ["7:50 — „Šrimad-Bhagavatam“ paskaita", "9:30 — Pusryčiai", "13:30 — Šeštadienio pietūs", "18:00 — Kirtanas"],
-    ];
+    const emptyMessage = locale.startsWith("lt")
+      ? "Šiai dienai programa dar nepaskelbta."
+      : "The schedule for this day has not been published yet.";
+    const categoryColors = {
+      ekadashi: "#c92f35",
+      fast: "#c98a24",
+      holiday: "#3da44a",
+      saints: "#2d8884",
+    };
+    const softCategoryColors = {
+      ekadashi: "#f9dfdf",
+      fast: "#f7ead3",
+      holiday: "#e2f2e5",
+      saints: "#dcefee",
+    };
+    const categoryNames = locale.startsWith("lt") ? {
+      ekadashi: "Ekadašis", fast: "Pasninkas", holiday: "Šventė", saints: "Šventųjų dienos",
+    } : {
+      ekadashi: "Ekadashi", fast: "Fasting", holiday: "Holiday", saints: "Saints' days",
+    };
 
     let selectedDate = new Date();
     let editingCard = null;
+    let weekVersion = 0;
+    let renderVersion = 0;
+    let cacheGeneration = 0;
     selectedDate.setHours(12, 0, 0, 0);
 
     const copyDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
@@ -47,56 +58,10 @@ document.addEventListener("DOMContentLoaded", () => {
       String(date.getDate()).padStart(2, "0"),
     ].join("-");
 
-    function mondayOf(date) {
-      const monday = copyDate(date);
-      const day = monday.getDay() || 7;
-      monday.setDate(monday.getDate() - day + 1);
-      return monday;
-    }
-
-    function categoriesFor(date) {
-      const seed = date.getDate() + date.getMonth();
-      return categories
-        .map((category, index) => ({ category, index }))
-        .filter(({ index }) => (
-          index === seed % categories.length
-          || (seed % 3 === 0 && index === (seed + 2) % categories.length)
-        ));
-    }
-
-    function colorsFor(date, palette) {
-      return categoriesFor(date).map(({ index }) => palette[index]);
-    }
-
-    function ringPattern(date, fallback = "#d9d3cf") {
-      const colors = colorsFor(date, categoryColors);
-      if (!colors.length) return `linear-gradient(${fallback}, ${fallback})`;
-      if (colors.length === 1) return `linear-gradient(${colors[0]}, ${colors[0]})`;
-      const sectorSize = 100 / colors.length;
-      const sectors = colors
-        .map((color, index) => `${color} ${index * sectorSize}% ${(index + 1) * sectorSize}%`)
-        .join(", ");
-      return `conic-gradient(from 270deg, ${sectors})`;
-    }
-
-    function headerPattern(date, fallback = "#d9d3cf") {
-      const colors = colorsFor(date, scheduleHeaderColors);
-      if (!colors.length) return `linear-gradient(${fallback}, ${fallback})`;
-      if (colors.length === 1) return `linear-gradient(${colors[0]}, ${colors[0]})`;
-      const stripeSize = 36;
-      const stripes = colors
-        .map((color, index) => `${color} ${index * stripeSize}px ${(index + 1) * stripeSize}px`)
-        .join(", ");
-      return `repeating-linear-gradient(135deg, ${stripes})`;
-    }
-
-    function demoContent(date) {
-      return demoSchedules[date.getDay()].map((item) => `<p>${item}</p>`).join("");
-    }
-
     async function loadSchedule(date, forceRefresh = false) {
       const key = dateKey(date);
       if (!forceRefresh && scheduleCache.has(key)) return scheduleCache.get(key);
+      const generation = cacheGeneration;
       try {
         const response = await fetch(`${scheduleUrl}?date=${encodeURIComponent(key)}`, {
           cache: "no-store",
@@ -104,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         if (!response.ok) throw new Error("Не удалось загрузить расписание");
         const data = await response.json();
-        scheduleCache.set(key, data);
+        if (generation === cacheGeneration) scheduleCache.set(key, data);
         return data;
       } catch (error) {
         console.error(error);
@@ -112,74 +77,114 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    function createDateButton(date, index, isEdge = false) {
+    function createDateButton(date, index) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "schedule-calendar__date";
       button.dataset.date = dateKey(date);
       button.setAttribute("aria-label", date.toLocaleDateString(locale, { dateStyle: "full" }));
-      button.style.setProperty("--date-ring", ringPattern(date));
+      button.setAttribute("aria-pressed", String(dateKey(date) === dateKey(selectedDate)));
       const distance = Math.round((date - selectedDate) / 86400000);
-      if (!isEdge && distance === 0) button.classList.add("is-selected");
-      if (!isEdge && Math.abs(distance) === 1) button.classList.add("is-neighbour");
+      if (distance === 0) button.classList.add("is-selected");
+      if (Math.abs(distance) === 1) button.classList.add("is-neighbour");
       button.innerHTML = `
         <span class="schedule-calendar__weekday">${weekdayNames[index % 7]}</span>
         <span class="schedule-calendar__date-number">${date.getDate()}</span>
       `;
-      if (!isEdge) {
-        button.addEventListener("click", () => {
-          selectedDate = copyDate(date);
-          render();
-        });
-      } else {
-        button.tabIndex = -1;
+      if (dateKey(date) === dateKey(new Date())) {
+        button.classList.add("is-today");
+        const label = document.createElement("span");
+        label.className = "schedule-calendar__today-label";
+        label.textContent = locale.startsWith("lt") ? "Šiandien" : "Today";
+        button.append(label);
       }
+      button.addEventListener("click", () => {
+        selectedDate = copyDate(date);
+        render();
+      });
       return button;
     }
 
     function renderWeek() {
+      const version = ++weekVersion;
       week.replaceChildren();
-      previousWeekDays.replaceChildren();
-      nextWeekDays.replaceChildren();
-      const monday = mondayOf(selectedDate);
-      for (let offset = -3; offset < 0; offset += 1) {
-        previousWeekDays.append(createDateButton(shiftedDate(monday, offset), offset + 7, true));
+      kartikaBar.hidden = true;
+      const requests = [];
+      for (let offset = -3; offset <= 3; offset += 1) {
+        const date = shiftedDate(selectedDate, offset);
+        const button = createDateButton(date, (date.getDay() + 6) % 7);
+        week.append(button);
+        requests.push(loadSchedule(date).then((data) => {
+          if (!button.isConnected || version !== weekVersion) return false;
+          const colors = (data.categories || []).map((kind) => categoryColors[kind]).filter(Boolean);
+          if (colors.length === 1) {
+            button.style.setProperty("--date-ring", `linear-gradient(${colors[0]}, ${colors[0]})`);
+          } else if (colors.length > 1) {
+            const step = 100 / colors.length;
+            button.style.setProperty("--date-ring", `conic-gradient(from 270deg, ${colors.map((color, i) => `${color} ${i * step}% ${(i + 1) * step}%`).join(", ")})`);
+          }
+          if (colors.length) {
+            const dots = document.createElement("span");
+            dots.className = "schedule-calendar__date-dots";
+            colors.forEach((color) => {
+              const dot = document.createElement("span");
+              dot.className = "schedule-calendar__date-dot";
+              dot.style.setProperty("--dot-color", color);
+              dots.append(dot);
+            });
+            button.append(dots);
+          }
+          return Boolean(data.kartika);
+        }));
       }
-      for (let offset = 0; offset < 7; offset += 1) {
-        week.append(createDateButton(shiftedDate(monday, offset), offset));
-      }
-      for (let offset = 7; offset < 10; offset += 1) {
-        nextWeekDays.append(createDateButton(shiftedDate(monday, offset), offset % 7, true));
-      }
-    }
-
-    function refreshExpandButton(card) {
-      const body = card.querySelector(".schedule-calendar__schedule-body");
-      const button = card.querySelector(".schedule-calendar__schedule-more");
-      if (!button || !body) return;
-      requestAnimationFrame(() => {
-        button.hidden = body.scrollHeight <= body.clientHeight + 1;
-      });
-    }
-
-    function configureExpandButton(card) {
-      const button = card.querySelector(".schedule-calendar__schedule-more");
-      if (!button) return;
-      refreshExpandButton(card);
-      button.addEventListener("click", () => {
-        const expanded = card.classList.toggle("is-expanded");
-        button.textContent = expanded ? "⌃" : "•••";
-        button.setAttribute("aria-expanded", String(expanded));
-        button.setAttribute("aria-label", expanded ? "Suskleisti dienos programą" : "Rodyti visą dienos programą");
+      Promise.all(requests).then((active) => {
+        if (version !== weekVersion) return;
+        const visible = window.matchMedia("(max-width: 800px)").matches ? active.slice(1, 6) : active;
+        const first = visible.indexOf(true);
+        const last = visible.lastIndexOf(true);
+        kartikaBar.hidden = first < 0;
+        if (first >= 0) {
+          kartikaBar.style.left = `${((first + 0.5) / visible.length) * 100}%`;
+          kartikaBar.style.right = `${((visible.length - last - 0.5) / visible.length) * 100}%`;
+        }
       });
     }
 
     async function hydrateScheduleCard(card, date) {
       const data = await loadSchedule(date);
-      if (!card.isConnected) return;
+      if (!card.isConnected || schedules.querySelector(".schedule-calendar__schedule-card") !== card) return;
       const body = card.querySelector(".schedule-calendar__schedule-body");
-      body.innerHTML = data.exists ? data.content : demoContent(date);
-      refreshExpandButton(card);
+      body.classList.remove("schedule-calendar__schedule-body--empty");
+      body.innerHTML = data.exists && data.content.trim() ? data.content : "";
+      if (!body.innerHTML) {
+        body.textContent = data.error || emptyMessage;
+        body.classList.add("schedule-calendar__schedule-body--empty");
+      }
+      const header = card.querySelector(".schedule-calendar__schedule-header");
+      const priorLabels = header.querySelector(".schedule-calendar__event-labels");
+      priorLabels?.remove();
+      const kinds = (data.categories || []).filter((kind) => categoryColors[kind]);
+      if (kinds.length === 1) {
+        header.style.setProperty("--schedule-header-background", softCategoryColors[kinds[0]]);
+      } else if (kinds.length > 1) {
+        const stripe = 48;
+        header.style.setProperty(
+          "--schedule-header-background",
+          `repeating-linear-gradient(135deg, ${kinds.map((kind, index) => `${softCategoryColors[kind]} ${index * stripe}px ${(index + 1) * stripe}px`).join(", ")})`
+        );
+      }
+      if (kinds.length) {
+        const labels = document.createElement("span");
+        labels.className = "schedule-calendar__event-labels";
+        kinds.forEach((kind) => {
+          const label = document.createElement("span");
+          label.className = "schedule-calendar__event-label";
+          label.style.setProperty("--event-color", categoryColors[kind]);
+          label.textContent = categoryNames[kind];
+          labels.append(label);
+        });
+        header.append(labels);
+      }
     }
 
     function waitForDailyEditor() {
@@ -207,7 +212,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       schedules.after(dailyEditorContainer);
       editingCard = null;
-      await window.scheduleEditLock?.release("daily-schedule");
+      try {
+        await window.scheduleEditLock?.release("daily-schedule");
+      } catch (error) {
+        console.error("Could not release schedule edit lock", error);
+      }
     }
 
     async function openDailyEditor(card, date) {
@@ -232,8 +241,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const body = card.querySelector(".schedule-calendar__schedule-body");
       body.innerHTML = data.exists ? data.content : "";
-      editor.setData(data.exists ? data.content : body.innerHTML);
+      editor.setData(data.exists ? data.raw_content : "");
       dailyScheduleDate.value = dateKey(date);
+      window.scheduleMarkerDailyContext = {
+        kartikaStart: data.kartika_start,
+        kartikaEnd: data.kartika_end,
+      };
       dailyScheduleError.hidden = true;
       card.querySelector(".schedule-calendar__schedule-content").hidden = true;
       card.querySelector(".schedule-calendar__schedule-header").after(dailyEditorContainer);
@@ -242,12 +255,11 @@ document.addEventListener("DOMContentLoaded", () => {
       editor.editing.view.focus();
     }
 
-    function createScheduleCard(date, adjacent = false) {
+    function createScheduleCard(date) {
       const article = document.createElement("article");
-      article.className = `schedule-calendar__schedule-card${adjacent ? " is-adjacent" : ""}`;
+      article.className = "schedule-calendar__schedule-card";
       article.dataset.date = dateKey(date);
-      article.style.setProperty("--schedule-header-background", headerPattern(date, "#ded9d5"));
-      const editButton = canEdit && !adjacent
+      const editButton = canEdit
         ? `<button class="schedule-calendar__edit-button" type="button" data-daily-schedule-edit aria-label="Редактировать расписание" title="Редактировать"><img src="${editIconUrl}" alt=""></button>`
         : "";
       article.innerHTML = `
@@ -256,8 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ${editButton}
         </header>
         <div class="schedule-calendar__schedule-content">
-          <div class="schedule-calendar__schedule-body">${demoContent(date)}</div>
-          ${adjacent ? "" : '<button class="schedule-calendar__schedule-more" type="button" aria-label="Rodyti visą dienos programą" aria-expanded="false">•••</button>'}
+          <div class="schedule-calendar__schedule-body"></div>
         </div>
       `;
       article.querySelector("[data-daily-schedule-edit]")?.addEventListener("click", () => {
@@ -269,20 +280,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderSchedules() {
       if (editingCard) closeDailyEditor();
-      const previousCard = createScheduleCard(shiftedDate(selectedDate, -1), true);
       const selectedCard = createScheduleCard(selectedDate);
-      const nextCard = createScheduleCard(shiftedDate(selectedDate, 1), true);
-      schedules.replaceChildren(previousCard, selectedCard, nextCard);
-      configureExpandButton(selectedCard);
+      schedules.replaceChildren(selectedCard);
     }
 
     function render() {
+      const version = ++renderVersion;
       monthSelect.value = String(selectedDate.getMonth());
+      if (!Array.from(yearSelect.options).some((option) => Number(option.value) === selectedDate.getFullYear())) {
+        yearSelect.add(new Option(String(selectedDate.getFullYear()), String(selectedDate.getFullYear())));
+      }
       yearSelect.value = String(selectedDate.getFullYear());
       renderWeek();
-      const activeCategories = categoriesFor(selectedDate).map(({ category }) => category);
-      categories.forEach((category) => {
-        category.classList.toggle("is-active", activeCategories.includes(category));
+      loadSchedule(selectedDate).then((data) => {
+        if (version !== renderVersion || dateKey(selectedDate) !== data.date) return;
+        categories.forEach((category) => {
+          category.classList.toggle("is-active", (data.categories || []).includes(category.dataset.calendarCategory));
+        });
       });
       renderSchedules();
     }
@@ -309,11 +323,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!response.ok) throw new Error(data.error || "Не удалось сохранить расписание");
         scheduleCache.set(data.date, { ...data, exists: true });
         if (editingCard?.isConnected) {
-          editingCard.querySelector(".schedule-calendar__schedule-body").innerHTML = data.content;
-          refreshExpandButton(editingCard);
+          const body = editingCard.querySelector(".schedule-calendar__schedule-body");
+          body.classList.remove("schedule-calendar__schedule-body--empty");
+          body.innerHTML = data.content;
         }
         await closeDailyEditor();
-        window.notifyScheduleUpdated();
+        window.notifyScheduleUpdated({ mainContent: data.main_content });
       } catch (error) {
         dailyScheduleError.textContent = error.message;
         dailyScheduleError.hidden = false;
@@ -327,22 +342,37 @@ document.addEventListener("DOMContentLoaded", () => {
     calendar.querySelector("[data-calendar-day-previous]").addEventListener("click", () => changeDate(-1));
     calendar.querySelector("[data-calendar-day-next]").addEventListener("click", () => changeDate(1));
     monthSelect.addEventListener("change", () => {
-      selectedDate.setMonth(Number(monthSelect.value), 1);
+      selectedDate = new Date(selectedDate.getFullYear(), Number(monthSelect.value), 1, 12);
       render();
     });
     yearSelect.addEventListener("change", () => {
-      selectedDate.setFullYear(Number(yearSelect.value));
+      const year = Number(yearSelect.value);
+      const day = Math.min(selectedDate.getDate(), new Date(year, selectedDate.getMonth() + 1, 0).getDate());
+      selectedDate = new Date(year, selectedDate.getMonth(), day, 12);
       render();
     });
 
+    let swipeStartX = null;
+    week.addEventListener("touchstart", (event) => {
+      swipeStartX = event.changedTouches[0].screenX;
+    }, { passive: true });
+    week.addEventListener("touchend", (event) => {
+      if (swipeStartX === null) return;
+      const movement = event.changedTouches[0].screenX - swipeStartX;
+      swipeStartX = null;
+      if (Math.abs(movement) > 45) changeDate(movement < 0 ? 1 : -1);
+    }, { passive: true });
+
     const refreshScheduleData = () => {
+      cacheGeneration += 1;
       scheduleCache.clear();
-      renderSchedules();
+      render();
     };
     window.addEventListener("schedule-data-updated", refreshScheduleData);
     window.addEventListener("storage", (event) => {
       if (event.key === "schedule-data-updated") refreshScheduleData();
     });
+    window.matchMedia("(max-width: 800px)").addEventListener("change", renderWeek);
 
     render();
   });

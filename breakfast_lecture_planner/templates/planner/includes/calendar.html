@@ -13,7 +13,7 @@
          data-weekdays-long="{% translate 'Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday' %}"
          aria-labelledby="calendar-title">
   <div class="schedule-calendar__heading">
-    <h2 id="calendar-title" class="schedule-calendar__title">{% translate "Kartika month" %}</h2>
+    <h2 id="calendar-title" class="schedule-calendar__title">{% if LANGUAGE_CODE == 'lt' %}Vaišnavų kalendorius{% else %}Vaishnava calendar{% endif %}</h2>
 
     <div class="schedule-calendar__selectors" aria-label="{% translate 'Select a date' %}">
       <label>
@@ -58,9 +58,8 @@
     </button>
 
     <div class="schedule-calendar__week-viewport">
-      <div class="schedule-calendar__week-edge" data-calendar-week-previous-days aria-hidden="true"></div>
+      <div class="schedule-calendar__kartika-bar" data-calendar-kartika-bar hidden><span>KĀRTIKA</span></div>
       <div class="schedule-calendar__week" data-calendar-week aria-label="{% translate 'Days of the week' %}"></div>
-      <div class="schedule-calendar__week-edge" data-calendar-week-next-days aria-hidden="true"></div>
     </div>
 
     <button class="schedule-calendar__week-button"
@@ -74,10 +73,10 @@
   <div class="schedule-calendar__categories" aria-label="{% translate 'Date categories' %}">
     <span class="schedule-calendar__category schedule-calendar__category--ekadashi"
           data-calendar-category="ekadashi">{% translate "Ekadashi" %}</span>
+    <span class="schedule-calendar__category schedule-calendar__category--fast"
+          data-calendar-category="fast">{% if LANGUAGE_CODE == 'lt' %}Pasninkas{% else %}Fasting{% endif %}</span>
     <span class="schedule-calendar__category schedule-calendar__category--holiday"
           data-calendar-category="holiday">{% translate "Holidays" %}</span>
-    <span class="schedule-calendar__category schedule-calendar__category--festival"
-          data-calendar-category="festival">{% translate "Festivals" %}</span>
     <span class="schedule-calendar__category schedule-calendar__category--saints"
           data-calendar-category="saints">{% translate "Appearance and disappearance days of saints" %}</span>
   </div>
@@ -91,12 +90,16 @@
       <form data-daily-schedule-form>
         {% csrf_token %}
         <input type="hidden" name="date" data-daily-schedule-date>
+        <div class="schedule-editor-controls" data-marker-controls="daily">
+          <div class="daily-schedule-editor__actions schedule-editor-save-actions">
+            <button type="submit" class="btn btn-success">Сохранить</button>
+            <button type="button" class="btn btn-secondary" data-daily-schedule-cancel>Отмена</button>
+          </div>
+          {% include "planner/includes/calendar_marker_buttons.html" %}
+        </div>
         {{ daily_schedule_form.content }}
         <p class="daily-schedule-editor__error" data-daily-schedule-error hidden></p>
-        <div class="daily-schedule-editor__actions">
-          <button type="submit" class="btn btn-success">Сохранить</button>
-          <button type="button" class="btn btn-secondary" data-daily-schedule-cancel>Отмена</button>
-        </div>
+        <div class="daily-schedule-editor__actions"><button type="submit" class="btn btn-success">Сохранить</button></div>
       </form>
     </div>
   {% endif %}

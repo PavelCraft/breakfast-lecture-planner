@@ -161,9 +161,12 @@
         <div id="main-post-editor" class="main-post-editor" hidden>
           <form id="main-post-editor-form" class="main-post-editor-form">
             {% csrf_token %}
-            <div class="main-post-editor-actions main-post-editor-actions-top">
-              <button type="submit" class="btn btn-success">Сохранить</button>
-              <button type="button" class="btn btn-secondary close-main-post-editor">Отмена</button>
+            <div class="schedule-editor-controls" data-marker-controls="main">
+              <div class="main-post-editor-actions main-post-editor-actions-top schedule-editor-save-actions">
+                <button type="submit" class="btn btn-success">Сохранить</button>
+                <button type="button" class="btn btn-secondary close-main-post-editor">Отмена</button>
+              </div>
+              {% include "planner/includes/calendar_marker_buttons.html" %}
             </div>
             {{ editor_form.media }}
             {{ editor_form.content }}
@@ -201,6 +204,7 @@
 <div id="elem2" class="hidden-element">{{ now_tuple }}</div>
 
 <script src="{% static 'js/timer.js' %}"></script>
+<script src="{% static 'js/calendar_markers.js' %}" defer></script>
 
 <script>
   const editPostButtonUp = document.getElementById('edit-post-btn-up');
@@ -209,6 +213,36 @@
   const mainPostEditorForm = document.getElementById('main-post-editor-form');
   const closeMainPostEditorButtons = document.querySelectorAll('.close-main-post-editor');
   const postContent = document.querySelector('.post-content');
+  let mainScheduleRefreshVersion = 0;
+
+  // Fetch the same server-rendered markup used on a normal page load. This also
+  // preserves today's anchor, the Friday registration link and marker colours.
+  const refreshMainScheduleView = async () => {
+      const version = ++mainScheduleRefreshVersion;
+      try {
+          const refreshUrl = new URL(window.location.href);
+          refreshUrl.searchParams.set('schedule_refresh', String(Date.now()));
+          const response = await fetch(refreshUrl, {
+              cache: 'no-store',
+              credentials: 'same-origin'
+          });
+          if (!response.ok) throw new Error('Не удалось обновить большое расписание.');
+          const html = await response.text();
+          const updated = new DOMParser().parseFromString(html, 'text/html').querySelector('.post-content');
+          if (!updated) throw new Error('Не найдено обновлённое расписание.');
+          if (version === mainScheduleRefreshVersion) postContent.innerHTML = updated.innerHTML;
+      } catch (error) {
+          console.error(error);
+      }
+  };
+
+  window.addEventListener('schedule-data-updated', (event) => {
+      if (event.detail?.mainContent) postContent.innerHTML = event.detail.mainContent;
+      refreshMainScheduleView();
+  });
+  window.addEventListener('storage', (event) => {
+      if (event.key === 'schedule-data-updated') refreshMainScheduleView();
+  });
 
   const waitForMainEditor = () => new Promise((resolve) => {
       let attempts = 0;
@@ -238,6 +272,11 @@
         if (!editor) throw new Error('Редактор CKEditor не был загружен.');
         const data = await response.json();
         editor.setData(data.content);
+        window.scheduleMarkerMainContext = {
+          dayDates: data.day_dates,
+          kartikaStart: data.kartika_start,
+          kartikaEnd: data.kartika_end
+        };
         postContent.hidden = true;
         mainPostEditor.hidden = false;
         editor.editing.view.focus();
@@ -279,7 +318,7 @@
       })
       .then(data => {
           // Обновляем содержимое поста
-          document.querySelector('.post-content').innerHTML = data.content;
+          postContent.innerHTML = data.content;
           closeMainEditor();
           if (data.warning) {
             alert('Текст сохранён, но дневные расписания не обновлены:\n\n' + data.warning);

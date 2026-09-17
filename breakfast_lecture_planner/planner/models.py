@@ -94,6 +94,18 @@ class DailySchedule(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class CalendarPeriod(models.Model):
+    """Kartika bounds survive the weekly removal of old schedule text."""
+
+    year = models.PositiveSmallIntegerField(unique=True)
+    starts_on = models.DateField()
+    ends_on = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Период Картики"
+        verbose_name_plural = "Периоды Картики"
+
+
 class ScheduleEditLock(models.Model):
     user = models.ForeignKey(
         "auth.User", on_delete=models.CASCADE, related_name="schedule_edit_locks"

@@ -36,9 +36,11 @@
     },
   };
 
-  window.notifyScheduleUpdated = () => {
+  window.notifyScheduleUpdated = (details = {}) => {
     const updatedAt = String(Date.now());
-    window.dispatchEvent(new CustomEvent("schedule-data-updated", { detail: updatedAt }));
+    window.dispatchEvent(new CustomEvent("schedule-data-updated", {
+      detail: { updatedAt, ...details },
+    }));
     localStorage.setItem("schedule-data-updated", updatedAt);
   };
 

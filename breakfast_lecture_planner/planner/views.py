@@ -5,7 +5,7 @@ from math import pi
 
 from calendar_utils.utils import get_next_day_with_time
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db import transaction
+from django.db import models, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -25,8 +25,9 @@ from .forms import (
     DailyScheduleForm,
     PostForm,
 )
-from .models import DailySchedule, Image, LunchParticipant, Post, ScheduleEditLock
-from .services.schedule_parser import ScheduleStructureError
+from .models import CalendarPeriod, DailySchedule, Image, LunchParticipant, Post, ScheduleEditLock
+from .services.calendar_markers import categories_in_html, decorated_main_content, public_day_content
+from .services.schedule_parser import ScheduleStructureError, parse_schedule
 from .services.schedule_sync import sync_daily_schedules, sync_day_to_main_schedule
 from .tasks import queue_admin_notification
 
@@ -200,11 +201,13 @@ class CombinedView(DetailView):
         context["content"] = heading_pattern.sub(
             decorate_schedule_heading, context["content"]
         )
+        marker_display = decorated_main_content if self.request.user.is_authenticated else public_day_content
+        context["content"] = marker_display(context["content"])
 
         for key, value in data.items():
-            data[key] = heading_pattern.sub(decorate_schedule_heading, value)
+            data[key] = marker_display(heading_pattern.sub(decorate_schedule_heading, value))
 
-        if not_schedule_text:  # Проверяем, что значение не пустое
+        if not_schedule_text and not is_ckeditor_html:
             data["not_schedule_text"] = markdown("\n".join(not_schedule_text))
 
         context["data"] = data
@@ -317,10 +320,24 @@ class DailyScheduleView(View):
         schedule = DailySchedule.objects.filter(date=schedule_date).first()
         if schedule_date < current_monday and not request.user.is_authenticated:
             schedule = None
+        period = CalendarPeriod.objects.filter(
+            starts_on__lte=schedule_date
+        ).filter(
+            models.Q(ends_on__gte=schedule_date) | models.Q(ends_on__isnull=True)
+        ).order_by("-starts_on").first()
+        editing_period = CalendarPeriod.objects.filter(
+            year__in=(schedule_date.year - 1, schedule_date.year)
+        ).order_by("-starts_on").first()
+        raw_content = schedule.content if schedule else ""
         response = JsonResponse(
             {
                 "date": schedule_date.isoformat(),
-                "content": schedule.content if schedule else "",
+                "content": public_day_content(raw_content),
+                "raw_content": raw_content if request.user.is_authenticated and is_admin(request.user) else "",
+                "categories": categories_in_html(raw_content),
+                "kartika": period is not None,
+                "kartika_start": editing_period.starts_on.isoformat() if editing_period else None,
+                "kartika_end": editing_period.ends_on.isoformat() if editing_period and editing_period.ends_on else None,
                 "exists": schedule is not None,
             }
         )
@@ -347,7 +364,7 @@ class DailyScheduleView(View):
             return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
         try:
-            schedule, _ = sync_day_to_main_schedule(
+            schedule, post = sync_day_to_main_schedule(
                 schedule_date, form.cleaned_data["content"]
             )
         except ScheduleStructureError as error:
@@ -359,7 +376,10 @@ class DailyScheduleView(View):
         return JsonResponse(
             {
                 "date": schedule.date.isoformat(),
-                "content": schedule.content,
+                "content": public_day_content(schedule.content),
+                "raw_content": schedule.content,
+                "categories": categories_in_html(schedule.content),
+                "main_content": decorated_main_content(markdown(post.content)),
                 "updated_at": schedule.updated_at.isoformat(),
             }
         )
@@ -666,10 +686,18 @@ class PostUpdateView(UpdateView):
     def get(self, request, *args, **kwargs):
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             post = self.get_object()
+            try:
+                day_dates = [day.date.isoformat() for day in parse_schedule(post.content, reference_date=timezone.localdate()).days]
+            except ScheduleStructureError:
+                day_dates = []
+            period = CalendarPeriod.objects.order_by("-starts_on").first()
             response = JsonResponse(
                 {
                     "id": post.pk,
                     "content": post.content,
+                    "day_dates": day_dates,
+                    "kartika_start": period.starts_on.isoformat() if period else None,
+                    "kartika_end": period.ends_on.isoformat() if period and period.ends_on else None,
                 }
             )
             response["Cache-Control"] = "no-store, private"
@@ -696,7 +724,7 @@ class PostUpdateView(UpdateView):
                         "Ошибка разбора большого расписания",
                         f"Большое текстовое поле сохранено, но дневные расписания не обновлены.\n\n{error}",
                     )
-            return JsonResponse({"content": markdown(self.object.content), "warning": warning})
+            return JsonResponse({"content": decorated_main_content(markdown(self.object.content)), "warning": warning})
 
         return JsonResponse({"error": "Invalid form"}, status=400)
 
