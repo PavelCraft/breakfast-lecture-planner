@@ -95,7 +95,7 @@ body {
     margin-right: 290px;
 }
 
-.mobile-logo, .mobile-content {
+.mobile-logo, .mobile-content, .mobile-language-switcher {
     display: none;
 }
 
@@ -922,6 +922,20 @@ h5:not(.dropdown h5), h6:not(.dropdown h6) {
     .wrapper, .full-width-line {
         display: none;
     }
+    .mobile-language-switcher {
+        display: block;
+        position: absolute;
+        top: 48px;
+        right: 132px;
+        z-index: 1001;
+    }
+    .mobile-language-switcher .language-switcher ul {
+        gap: 3px;
+    }
+    .mobile-language-switcher .language-switcher button,
+    .mobile-language-switcher .language-switcher button.active {
+        font-size: 14px;
+    }
     .collapse {
         display: block;
     }
@@ -1055,6 +1069,10 @@ h5:not(.dropdown h5), h6:not(.dropdown h6) {
 }
 
 @media (max-width: 576px) {
+    .mobile-language-switcher {
+        top: 28px;
+        right: 98px;
+    }
     .container {
         text-align: left;
         padding: 24px 0 0 30px;

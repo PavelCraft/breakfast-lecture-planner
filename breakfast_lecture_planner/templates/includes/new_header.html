@@ -26,24 +26,7 @@
   <div class="empty-2"></div>
   <!-- Menu 4 - Language Switcher -->
   <div class="menuitem">
-    <nav class="language-switcher">
-      <ul>
-        {% for language_code, language_name in LANGUAGES %}
-          <li>
-            <form action="{% url 'set_language' %}" method="post">
-              {% csrf_token %}
-              <input name="next" type="hidden" value="{{ request.get_full_path }}">
-              <input name="language" type="hidden" value="{{ language_code }}">
-              <button type="submit"
-                      class="{% if language_code == LANGUAGE_CODE %}active{% endif %}"
-                      aria-label="{{ language_name }}">
-                {{ language_code|upper }}{% if not forloop.last %} /{% endif %}
-              </button>
-            </form>
-          </li>
-        {% endfor %}
-      </ul>
-    </nav>
+    {% include "includes/language_switcher.html" %}
   </div>
 </div>
 <hr class="full-width-line">
@@ -57,6 +40,7 @@
   <img id="menuIcon" src="{% static 'icons/mobile-menu.png' %}" alt="{% translate 'Menu' %}">
 </button>
 <div class="collapse" id="mobileMenu">{% include "includes/dropdown.html" %}</div>
+<div class="mobile-language-switcher">{% include "includes/language_switcher.html" %}</div>
 <a href="{% url 'planner:new' %}">
   <img src="{% static 'img/new_logo.png' %}"
      alt="ISKCON Vilnius Logo"

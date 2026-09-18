@@ -591,13 +591,79 @@
   }
 
   .schedule-calendar__weekday {
-    font-size: 0.75rem;
+    font-size: 0.66rem;
+    line-height: 1.2;
+  }
+
+  .schedule-calendar__week {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .schedule-calendar__date {
+    width: 100%;
+    min-height: 76px;
+    padding: 0;
+    gap: 4px;
+  }
+
+  .schedule-calendar__date-number {
+    width: 30px;
+    height: 30px;
+    font-size: 0.82rem;
+  }
+
+  .schedule-calendar__date.is-neighbour .schedule-calendar__date-number {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+
+  .schedule-calendar__date.is-selected .schedule-calendar__date-number {
+    width: 44px;
+    height: 44px;
+    border-width: 3px;
+    font-size: 1.08rem;
+  }
+
+  .schedule-calendar__categories {
+    gap: 8px;
+  }
+
+  .schedule-calendar__category {
+    padding: 5px 10px;
+    border-width: 3px;
+    font-size: 0.8rem;
   }
 
   .schedule-calendar__schedule-header,
   .schedule-calendar__schedule-content {
     padding-left: 18px;
     padding-right: 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .schedule-calendar__weekday {
+    font-size: 0.6rem;
+  }
+
+  .schedule-calendar__date-number {
+    width: 28px;
+    height: 28px;
+    font-size: 0.76rem;
+  }
+
+  .schedule-calendar__date.is-neighbour .schedule-calendar__date-number {
+    width: 32px;
+    height: 32px;
+    font-size: 0.84rem;
+  }
+
+  .schedule-calendar__date.is-selected .schedule-calendar__date-number {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
   }
 }
 

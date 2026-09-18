@@ -1,0 +1,20 @@
+{% load i18n %}
+<nav class="language-switcher" aria-label="{% translate 'Language' %}">
+  <ul>
+    {% for language_code, language_name in LANGUAGES %}
+      <li>
+        <form action="{% url 'set_language' %}" method="post">
+          {% csrf_token %}
+          <input name="next" type="hidden" value="{{ request.get_full_path }}">
+          <input name="language" type="hidden" value="{{ language_code }}">
+          <button type="submit"
+                  class="{% if language_code == LANGUAGE_CODE %}active{% endif %}"
+                  aria-label="{{ language_name }}"
+                  {% if language_code == LANGUAGE_CODE %}aria-current="true"{% endif %}>
+            {{ language_code|upper }}{% if not forloop.last %} /{% endif %}
+          </button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+</nav>
