@@ -115,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       button.addEventListener("click", () => {
         selectedDate = copyDate(date);
-        render(true);
+        render(true, true);
       });
       return button;
     }
@@ -185,13 +185,15 @@ document.addEventListener("DOMContentLoaded", () => {
       ]));
     }
 
-    function animateDatePositions(previousPositions, direction) {
+    function animateDatePositions(previousPositions, daysMoved) {
       if (!previousPositions) return;
       const buttons = Array.from(week.querySelectorAll(".schedule-calendar__date"));
-      const currentDates = new Set(buttons
-        .filter((button) => button.getBoundingClientRect().width > 0)
-        .map((button) => button.dataset.date));
-      const step = week.clientWidth / (window.matchMedia("(max-width: 800px)").matches ? 5 : 7);
+      const visibleButtons = buttons.filter((button) => button.getBoundingClientRect().width > 0);
+      const currentDates = new Set(visibleButtons.map((button) => button.dataset.date));
+      const step = visibleButtons.length > 1
+        ? visibleButtons[1].getBoundingClientRect().left - visibleButtons[0].getBoundingClientRect().left
+        : 0;
+      const shift = daysMoved * step;
       const options = { duration: 1000, easing: "cubic-bezier(.42, 0, .58, 1)" };
 
       buttons.forEach((button) => {
@@ -209,8 +211,8 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } else {
           navigationAnimations.push(button.animate([
-            { transform: `translateX(${direction * step}px)`, opacity: 0 },
-            { transform: "translateX(0)", opacity: 1 },
+            { transform: `translateX(${shift}px)` },
+            { transform: "translateX(0)" },
           ], options));
         }
       });
@@ -234,8 +236,8 @@ document.addEventListener("DOMContentLoaded", () => {
         viewport.append(element);
         navigationOverlays.push(element);
         const animation = element.animate([
-          { transform: "translateX(0)", opacity: 1 },
-          { transform: `translateX(${-direction * step}px)`, opacity: 0 },
+          { transform: "translateX(0)" },
+          { transform: `translateX(${-shift}px)` },
         ], options);
         navigationAnimations.push(animation);
         animation.finished.then(() => element.remove(), () => element.remove());
@@ -496,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } : null;
         renderWeek();
         if (animateNavigation && animateRings) {
-          animateDatePositions(previousDatePositions, Math.sign(daysMoved));
+          animateDatePositions(previousDatePositions, daysMoved);
           animateDateRings(previousRingSizes);
         }
         renderSchedules(data);
