@@ -1,36 +1,36 @@
-{% extends "auth.html" %}
+{% extends "admin_base.html" %}
 {% load static %}
 {% block title %}Техподдержка{% endblock %}
 {% block content %}
   <div class="container contacts">
-    <h1 contacts>Для связи с разработчиком</h1>
+    <h1>Для связи с разработчиком</h1>
     <h3>при возникновении вопросов, пожеланий, коммерческих предложений, используйте любой из этих способов</h3>
     <div class="icons">
       <div class="icons__item">
-        <a href="tg://resolve?domain=realpavelb" target="_blank">
+        <a href="tg://resolve?domain=realpavelb" aria-label="Написать в Telegram">
           <img src="{% static 'icons/telegram-brands-solid.svg' %}"
-               alt="Telegram Icon"
+               alt=""
                class="icon-svg" />
         </a>
       </div>
       <div class="icons__item">
-        <a href="https://kwork.ru/user/best_web_developer" target="_blank">
-          <img src="{% static 'icons/kwork.svg' %}"
-               alt="Kwork Icon"
+        <a href="https://formacode.dev/ru/brief" target="_blank" rel="noopener noreferrer" aria-label="Связаться через FormaCode">
+          <img src="{% static 'icons/formacode.svg' %}"
+               alt=""
                class="icon-svg">
         </a>
       </div>
       <div class="icons__item">
-        <a href="https://wa.me/+79629404858" target="_blank">
+        <a href="https://wa.me/+79629404858" target="_blank" rel="noopener noreferrer" aria-label="Написать в WhatsApp">
           <img src="{% static 'icons/square-whatsapp-brands-solid.svg' %}"
-               alt="whatsapp Icon"
+               alt=""
                class="icon-svg">
         </a>
       </div>
       <div class="icons__item">
-        <a href="https://vk.com/im?sel=6258387" target="_blank">
+        <a href="https://vk.com/im?sel=6258387" target="_blank" rel="noopener noreferrer" aria-label="Написать во ВКонтакте">
           <img src="{% static 'icons/vk-brands-solid.svg' %}"
-               alt="vk Icon"
+               alt=""
                class="icon-svg">
         </a>
       </div>

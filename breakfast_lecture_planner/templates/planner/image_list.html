@@ -1,27 +1,41 @@
-{% extends 'auth.html' %}
+{% extends 'admin_base.html' %}
 {% block title %}Изображения на главной{% endblock title %}
 {% block content %}
-<div class="container mt-4">
-  <h1 class="mb-3">Изображения на главной</h1>
-  <p>Загрузите фон и объект отдельно. Их расположение настраивается прямо на главной странице.</p>
-  <p>Чтобы акула «выныривала» из волны, используйте фон с прозрачной областью над водой и объект с прозрачным фоном. Непрозрачная часть фона перекроет нижнюю часть объекта.</p>
-  <form method="post" enctype="multipart/form-data">
+<main class="container admin-panel admin-images">
+  <div class="admin-page-actions"><a href="{% url 'planner:cabinet' %}" class="btn btn-secondary">Назад</a></div>
+  <p class="admin-eyebrow">Оформление главной</p>
+  <h1>Изображения на главной</h1>
+  <p class="admin-intro">Загрузите фон и объект отдельно. Их размеры и расположение можно настроить на главной странице.</p>
+  <form method="post" enctype="multipart/form-data" class="admin-images-form">
     {% csrf_token %}
     {{ form.non_field_errors }}
-    <div class="row">
-      <div class="col-md-6 mb-3">
-        <label for="{{ form.background.id_for_label }}" class="form-label">Фон</label>
-        {% if home_scene.background %}<div class="mb-2"><img src="{{ home_scene.background.url }}" alt="Текущий фон" class="img-fluid" style="max-height:200px"></div>{% endif %}
-        {{ form.background }}{{ form.background.errors }}
-      </div>
-      <div class="col-md-6 mb-3">
-        <label for="{{ form.object_image.id_for_label }}" class="form-label">Объект</label>
-        {% if home_scene.object_image %}<div class="mb-2"><img src="{{ home_scene.object_image.url }}" alt="Текущий объект" class="img-fluid" style="max-height:200px"></div>{% endif %}
-        {{ form.object_image }}{{ form.object_image.errors }}
-      </div>
+    <div class="admin-image-grid">
+      <section class="admin-image-card admin-image-field">
+        <div class="admin-image-card__heading"><span class="admin-image-card__number">01</span><h2>Фон</h2></div>
+        <p>Волна, трава или другое изображение позади календаря.</p>
+        <div class="admin-image-preview">
+          {% if home_scene.background %}<img src="{{ home_scene.background.url }}" alt="Текущий фон">{% else %}<span>Фон пока не загружен</span>{% endif %}
+        </div>
+        <label for="{{ form.background.id_for_label }}" class="form-label">Заменить изображение</label>
+        <div class="admin-image-input">{{ form.background }}</div>
+        {{ form.background.errors }}
+      </section>
+      <section class="admin-image-card admin-image-field">
+        <div class="admin-image-card__heading"><span class="admin-image-card__number">02</span><h2>Объект</h2></div>
+        <p>Акула, дерево или другой элемент поверх фона. Лучше использовать PNG с прозрачностью.</p>
+        <div class="admin-image-preview">
+          {% if home_scene.object_image %}<img src="{{ home_scene.object_image.url }}" alt="Текущий объект">{% else %}<span>Объект пока не загружен</span>{% endif %}
+        </div>
+        <label for="{{ form.object_image.id_for_label }}" class="form-label">Заменить изображение</label>
+        <div class="admin-image-input">{{ form.object_image }}</div>
+        {{ form.object_image.errors }}
+      </section>
     </div>
-    <button type="submit" class="btn btn-primary">Сохранить изображения</button>
-    <a href="{% url 'planner:new' %}" class="btn btn-secondary">На главную для настройки</a>
+    <p class="admin-image-tip">Чтобы объект выглядел погружённым в волну, используйте прозрачную область над водой на изображении фона.</p>
+    <div class="admin-form-actions">
+      <button type="submit" class="btn btn-primary">Сохранить изображения</button>
+      <a href="{% url 'planner:new' %}" class="btn btn-outline-secondary">На главную для настройки</a>
+    </div>
   </form>
-</div>
+</main>
 {% endblock content %}

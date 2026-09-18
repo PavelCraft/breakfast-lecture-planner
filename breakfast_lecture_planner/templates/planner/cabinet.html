@@ -1,27 +1,27 @@
-{% extends 'auth.html' %}
+{% extends 'admin_base.html' %}
 {% block title %}
   Кабинет администратора
 {% endblock title %}
 {% block content %}
-  <div class="container mt-4 d-flex justify-content-center">
-    <div class="w-100" style="max-width: 50%;">
+  <main class="container admin-panel admin-dashboard">
+      <p class="admin-eyebrow">Управление сайтом</p>
       <h1>Кабинет администратора</h1>
-      <div class="list-group mt-4">
+      <p class="admin-intro">Выберите раздел, с которым хотите работать.</p>
+      <div class="list-group admin-dashboard-links">
         <a href="{% url 'planner:image_list' %}"
-           class="list-group-item list-group-item-action">Изображения на Главной</a>
+           class="list-group-item list-group-item-action">Изображения на главной <span aria-hidden="true">→</span></a>
         <a href="{% url 'planner:lunch_participants' %}"
-           class="list-group-item list-group-item-action">Списки записавшихся на субботний обед</a>
+           class="list-group-item list-group-item-action">Участники субботнего обеда <span aria-hidden="true">→</span></a>
         <a href="{% url 'planner:all_lunch_participants' %}"
-           class="list-group-item list-group-item-action">Архивные списки записавшихся на субботний обед</a>
+           class="list-group-item list-group-item-action">Архив списков участников <span aria-hidden="true">→</span></a>
         <a href="{% url 'planner:archive' %}"
-           class="list-group-item list-group-item-action">Архив</a>
+           class="list-group-item list-group-item-action">Архив расписания <span aria-hidden="true">→</span></a>
         <a href="{% url 'planner:schedule_edit_unlock' %}"
-           class="list-group-item list-group-item-action">Снятие блокировки с редактирования</a>
+           class="list-group-item list-group-item-action">Снятие блокировки редактирования <span aria-hidden="true">→</span></a>
         {% if user.is_superuser %}
           <a href="{% url 'users:user_list' %}"
-             class="list-group-item list-group-item-action">Список администраторов</a>
+             class="list-group-item list-group-item-action">Администраторы <span aria-hidden="true">→</span></a>
         {% endif %}
       </div>
-    </div>
-  </div>
+  </main>
 {% endblock content %}
