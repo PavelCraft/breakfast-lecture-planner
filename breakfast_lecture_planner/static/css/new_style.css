@@ -69,7 +69,9 @@
 }
 
 html, body {
-    overflow-x: hidden;
+    /* clip does not create a scroll container, so sticky editor controls
+       stay attached to the viewport while the long schedule is scrolled. */
+    overflow-x: clip;
 }
 
 body {
