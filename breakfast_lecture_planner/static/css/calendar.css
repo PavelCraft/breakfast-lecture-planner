@@ -618,6 +618,11 @@
   box-shadow: 0 5px 16px rgb(52 39 34 / 9%);
 }
 
+/* CKEditor fixes its toolbar to the viewport; keep it below the editor controls. */
+.main-post-editor .ck-sticky-panel__content_sticky {
+  top: var(--schedule-editor-controls-height, 0px) !important;
+}
+
 .schedule-editor-controls .schedule-editor-save-actions {
   margin: 0;
 }

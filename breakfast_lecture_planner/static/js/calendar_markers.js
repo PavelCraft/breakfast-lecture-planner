@@ -149,6 +149,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.querySelectorAll("[data-marker-controls]").forEach((controls) => {
+    const mainEditor = controls.closest(".main-post-editor");
+    if (mainEditor) {
+      const updateControlsHeight = () => {
+        mainEditor.style.setProperty(
+          "--schedule-editor-controls-height",
+          `${controls.getBoundingClientRect().height}px`
+        );
+      };
+      if (window.ResizeObserver) {
+        new ResizeObserver(updateControlsHeight).observe(controls);
+      }
+      window.addEventListener("resize", updateControlsHeight);
+      updateControlsHeight();
+    }
     const updateStickyActions = () => {
       const form = controls.closest("form");
       controls.classList.toggle(
@@ -157,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     };
     window.addEventListener("scroll", updateStickyActions, { passive: true });
-    controls.closest(".main-post-editor")?.addEventListener("scroll", updateStickyActions, { passive: true });
+    mainEditor?.addEventListener("scroll", updateStickyActions, { passive: true });
     window.addEventListener("resize", updateStickyActions);
     controls.querySelectorAll("[data-marker-button]").forEach((button) => {
       button.addEventListener("pointerdown", (event) => event.preventDefault());
