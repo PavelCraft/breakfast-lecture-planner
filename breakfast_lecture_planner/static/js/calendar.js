@@ -581,6 +581,28 @@ document.addEventListener("DOMContentLoaded", () => {
       if (Math.abs(movement) > 45) changeDate(movement < 0 ? 1 : -1, true);
     }, { passive: true });
 
+    let scheduleSwipe = null;
+    schedules.addEventListener("touchstart", (event) => {
+      if (editingCard || event.touches.length !== 1 || event.target.closest("button, a, input, textarea, select")) {
+        scheduleSwipe = null;
+        return;
+      }
+      const touch = event.touches[0];
+      scheduleSwipe = { x: touch.clientX, y: touch.clientY };
+    }, { passive: true });
+    schedules.addEventListener("touchend", (event) => {
+      if (!scheduleSwipe || event.changedTouches.length !== 1) return;
+      const touch = event.changedTouches[0];
+      const movementX = touch.clientX - scheduleSwipe.x;
+      const movementY = touch.clientY - scheduleSwipe.y;
+      scheduleSwipe = null;
+      if (Math.abs(movementX) < 50 || Math.abs(movementX) <= Math.abs(movementY) * 1.25) return;
+      changeDate(movementX < 0 ? 1 : -1, true);
+    }, { passive: true });
+    schedules.addEventListener("touchcancel", () => {
+      scheduleSwipe = null;
+    }, { passive: true });
+
     const refreshScheduleData = () => {
       cacheGeneration += 1;
       scheduleCache.clear();

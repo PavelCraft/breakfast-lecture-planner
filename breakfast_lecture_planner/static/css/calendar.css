@@ -97,11 +97,16 @@
 
 .schedule-calendar__week-button,
 .schedule-calendar__day-navigation button {
+  display: grid;
   width: 46px;
   height: 46px;
   flex: 0 0 46px;
+  padding: 0;
+  place-items: center;
   border: 1px solid var(--calendar-accent);
   border-radius: 50%;
+  -webkit-appearance: none;
+  appearance: none;
   background: transparent;
   color: var(--calendar-accent);
   font-size: 1.4rem;
@@ -116,6 +121,14 @@
 .schedule-calendar__week-button img {
   width: 34px;
   height: 34px;
+  object-fit: contain;
+}
+
+.schedule-calendar__day-navigation img {
+  display: block;
+  width: 30px;
+  height: 20px;
+  margin: auto;
   object-fit: contain;
 }
 
@@ -465,6 +478,7 @@
   align-items: flex-start;
   justify-content: center;
   overflow: visible;
+  touch-action: pan-y;
 }
 
 .schedule-calendar__schedule-card,

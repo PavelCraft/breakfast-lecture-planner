@@ -105,8 +105,12 @@
   {% endif %}
 
   <div class="schedule-calendar__day-navigation" aria-label="{% translate 'Day navigation' %}">
-    <button type="button" data-calendar-day-previous aria-label="{% translate 'Previous day' %}">←</button>
-    <button type="button" data-calendar-day-next aria-label="{% translate 'Next day' %}">→</button>
+    <button type="button" data-calendar-day-previous aria-label="{% translate 'Previous day' %}">
+      <img src="{% static 'icons/day_arrow_left.svg' %}" alt="">
+    </button>
+    <button type="button" data-calendar-day-next aria-label="{% translate 'Next day' %}">
+      <img src="{% static 'icons/day_arrow_right.svg' %}" alt="">
+    </button>
   </div>
 </section>
 
