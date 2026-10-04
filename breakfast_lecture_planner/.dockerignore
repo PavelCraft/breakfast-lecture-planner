@@ -1,0 +1,28 @@
+# Runtime data is mounted as volumes and must not be copied into the image.
+media/
+staticfiles/
+logs/
+
+# Local databases, logs and Python caches are not application sources.
+*.sqlite3
+*.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local development environments and editor metadata.
+.env
+.venv/
+venv/
+.idea/
+.vscode/
+
+# Backups and archives must never become part of a Docker image.
+*.tar
+*.tar.gz
+*.tar.xz
+*.zip
+*.dump
+backups/
