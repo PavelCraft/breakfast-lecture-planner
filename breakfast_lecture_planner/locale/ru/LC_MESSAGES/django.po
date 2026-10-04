@@ -276,8 +276,8 @@ msgid "Festivals"
 msgstr "Фестивали"
 
 #: templates/planner/includes/calendar.html:82
-msgid "Appearance and disappearance days of saints"
-msgstr "Дни прихода и ухода святых личностей"
+msgid "Saints' days"
+msgstr "Дни святых"
 
 #: templates/planner/includes/calendar.html:104
 msgid "Day navigation"

@@ -65,6 +65,16 @@ def _top_level_tag(tag, soup):
     return current
 
 
+def _without_trailing_week_separator(nodes):
+    """Exclude an <hr> and empty spacer headings placed between two weeks."""
+    separator = len(nodes)
+    while separator and nodes[separator - 1].name != "hr" and not _text(nodes[separator - 1]):
+        separator -= 1
+    if separator and nodes[separator - 1].name == "hr":
+        return nodes[: separator - 1]
+    return nodes
+
+
 def _week_monday(week_number, reference):
     candidates = []
     for year in range(reference.year - 1, reference.year + 2):
@@ -163,9 +173,10 @@ def parse_schedule(html, reference_date=None):
             next_position = (
                 day_positions[day_index + 1][0] if day_index + 1 < 7 else len(block)
             )
-            content = "".join(
-                str(node) for node in block[position + 1 : next_position]
-            ).strip()
+            content_nodes = block[position + 1 : next_position]
+            if day_index == len(day_positions) - 1:
+                content_nodes = _without_trailing_week_separator(content_nodes)
+            content = "".join(str(node) for node in content_nodes).strip()
             days.append(ParsedDay(expected, content))
     current_monday = reference_date - timedelta(days=reference_date.weekday())
     if not any(monday == current_monday for monday, _ in week_blocks):
@@ -198,11 +209,24 @@ def replace_day_content(html, target_date, new_content, reference_date=None):
     parsed_dates = [day.date for day in parsed.days]
     target_index = parsed_dates.index(target_date)
     start = headings[target_index][0]
-    end = (
+    next_heading = (
         headings[target_index + 1][0]
         if target_index + 1 < len(headings)
         else len(top_tags)
     )
+    # The marker of the next week sits between Sunday and the following Monday.
+    # It belongs to neither day's body and must survive a Sunday edit.
+    next_week_marker = next(
+        (
+            index
+            for index, node in enumerate(top_tags[start + 1 :], start=start + 1)
+            if parse_week_number(_text(node)) is not None
+        ),
+        len(top_tags),
+    )
+    end = min(next_heading, next_week_marker)
+    day_nodes = top_tags[start + 1 : end]
+    end = start + 1 + len(_without_trailing_week_separator(day_nodes))
     for node in top_tags[start + 1 : end]:
         node.extract()
     anchor = top_tags[start]

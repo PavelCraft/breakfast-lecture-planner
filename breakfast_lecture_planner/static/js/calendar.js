@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ekadashi: "#c92f35",
       fast: "#c98a24",
       holiday: "#3da44a",
-      saints: "#2d8884",
+      saints: "#2867b2",
     };
     const softCategoryColors = {
       ekadashi: "#f9dfdf",
@@ -38,6 +38,19 @@ document.addEventListener("DOMContentLoaded", () => {
     } : {
       ekadashi: "Ekadashi", fast: "Fasting", holiday: "Holiday", saints: "Saints' days",
     };
+
+    function categoryHalo(colors) {
+      if (colors.length === 1) return colors[0];
+      const step = 360 / colors.length;
+      const blend = Math.min(8, step * 0.08);
+      const stops = [`${colors[0]} 0deg`];
+      colors.forEach((color, index) => {
+        const boundary = (index + 1) * step;
+        stops.push(`${color} ${boundary - blend}deg`);
+        stops.push(`${colors[(index + 1) % colors.length]} ${Math.min(360, boundary + blend)}deg`);
+      });
+      return `conic-gradient(from -90deg, ${stops.join(", ")})`;
+    }
 
     let selectedDate = new Date();
     let editingCard = null;
@@ -132,13 +145,9 @@ document.addEventListener("DOMContentLoaded", () => {
         requests.push(loadSchedule(date).then((data) => {
           if (!button.isConnected || version !== weekVersion) return false;
           const colors = (data.categories || []).map((kind) => categoryColors[kind]).filter(Boolean);
-          if (colors.length === 1) {
-            button.style.setProperty("--date-ring", `linear-gradient(${colors[0]}, ${colors[0]})`);
-          } else if (colors.length > 1) {
-            const step = 100 / colors.length;
-            button.style.setProperty("--date-ring", `conic-gradient(from 270deg, ${colors.map((color, i) => `${color} ${i * step}% ${(i + 1) * step}%`).join(", ")})`);
-          }
           if (colors.length) {
+            button.classList.add("has-categories");
+            button.style.setProperty("--date-halo", categoryHalo(colors));
             const dots = document.createElement("span");
             dots.className = "schedule-calendar__date-dots";
             colors.forEach((color) => {

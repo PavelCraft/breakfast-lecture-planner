@@ -60,6 +60,25 @@ class ScheduleParserTests(TestCase):
         self.assertEqual(parsed.days[4].content, "<ul><li>Changed</li></ul>")
         self.assertEqual(parsed.days[3].content, "<p>day-4</p>")
 
+    def test_replacing_sunday_preserves_next_week_marker(self):
+        separator = "<hr><h1>&nbsp;</h1>"
+        content = week_html(2026, 40) + separator + week_html(2026, 41)
+
+        original = parse_schedule(content, reference_date=date(2026, 10, 4))
+        self.assertEqual(original.days[6].content, "<p>day-7</p>")
+
+        changed = replace_day_content(
+            content, date(2026, 10, 4), "<p>[Экадаши]</p><p>Changed Sunday</p>"
+        )
+
+        parsed = parse_schedule(changed, reference_date=date(2026, 10, 4))
+        self.assertEqual(len(parsed.week_blocks), 2)
+        self.assertEqual(len(parsed.days), 14)
+        self.assertIn("SAVAITĖ № 41", changed)
+        self.assertIn("<hr/>", changed)
+        self.assertEqual(parsed.days[6].content, "<p>[Экадаши]</p><p>Changed Sunday</p>")
+        self.assertEqual(parsed.days[7].content, "<p>day-1</p>")
+
     def test_calendar_markers_are_standalone_and_hidden_only_in_daily_card(self):
         content = "<p>[Экадаши]</p><p>[Пост]</p><p>Текст [Праздник] внутри записи</p>"
         self.assertEqual(categories_in_html(content), ["ekadashi", "fast"])

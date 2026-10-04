@@ -269,7 +269,7 @@ msgid "Festivals"
 msgstr ""
 
 #: templates/planner/includes/calendar.html:82
-msgid "Appearance and disappearance days of saints"
+msgid "Saints' days"
 msgstr ""
 
 #: templates/planner/includes/calendar.html:104

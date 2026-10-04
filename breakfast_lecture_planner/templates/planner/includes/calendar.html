@@ -50,7 +50,7 @@
   </div>
 
   <div class="schedule-calendar__week-navigation">
-    <button class="schedule-calendar__week-button"
+    <button class="schedule-calendar__week-button schedule-calendar__navigation-zone"
             type="button"
             data-calendar-week-previous
             aria-label="{% translate 'Previous week' %}">
@@ -62,7 +62,7 @@
       <div class="schedule-calendar__week" data-calendar-week aria-label="{% translate 'Days of the week' %}"></div>
     </div>
 
-    <button class="schedule-calendar__week-button"
+    <button class="schedule-calendar__week-button schedule-calendar__navigation-zone"
             type="button"
             data-calendar-week-next
             aria-label="{% translate 'Next week' %}">
@@ -78,12 +78,28 @@
     <span class="schedule-calendar__category schedule-calendar__category--holiday"
           data-calendar-category="holiday">{% translate "Holidays" %}</span>
     <span class="schedule-calendar__category schedule-calendar__category--saints"
-          data-calendar-category="saints">{% translate "Appearance and disappearance days of saints" %}</span>
+          data-calendar-category="saints">{% translate "Saints' days" %}</span>
   </div>
 
-  <div class="schedule-calendar__schedules"
-       data-calendar-schedules
-       aria-live="polite"></div>
+  <div class="schedule-calendar__schedule-navigation">
+    <button class="schedule-calendar__day-button schedule-calendar__navigation-zone"
+            type="button"
+            data-calendar-day-previous
+            aria-label="{% translate 'Previous day' %}">
+      <img src="{% static 'icons/slider_row_left.svg' %}" alt="">
+    </button>
+
+    <div class="schedule-calendar__schedules"
+         data-calendar-schedules
+         aria-live="polite"></div>
+
+    <button class="schedule-calendar__day-button schedule-calendar__navigation-zone"
+            type="button"
+            data-calendar-day-next
+            aria-label="{% translate 'Next day' %}">
+      <img src="{% static 'icons/slider_row_right.svg' %}" alt="">
+    </button>
+  </div>
 
   {% if daily_schedule_form %}
     <div class="daily-schedule-editor" data-daily-schedule-editor hidden>
@@ -104,14 +120,6 @@
     </div>
   {% endif %}
 
-  <div class="schedule-calendar__day-navigation" aria-label="{% translate 'Day navigation' %}">
-    <button type="button" data-calendar-day-previous aria-label="{% translate 'Previous day' %}">
-      <img src="{% static 'icons/day_arrow_left.svg' %}" alt="">
-    </button>
-    <button type="button" data-calendar-day-next aria-label="{% translate 'Next day' %}">
-      <img src="{% static 'icons/day_arrow_right.svg' %}" alt="">
-    </button>
-  </div>
 </section>
 
 <script src="{% static 'js/calendar.js' %}" defer></script>

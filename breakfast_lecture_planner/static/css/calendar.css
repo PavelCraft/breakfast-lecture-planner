@@ -10,8 +10,7 @@
 .schedule-calendar__heading,
 .schedule-calendar__week-navigation,
 .schedule-calendar__selectors,
-.schedule-calendar__categories,
-.schedule-calendar__day-navigation {
+.schedule-calendar__categories {
   display: flex;
   align-items: center;
 }
@@ -63,7 +62,8 @@
 
 .schedule-calendar__week-navigation {
   justify-content: space-between;
-  gap: 18px;
+  align-items: stretch;
+  gap: 0;
 }
 
 .schedule-calendar__week-viewport {
@@ -95,12 +95,11 @@
   pointer-events: none;
 }
 
-.schedule-calendar__week-button,
-.schedule-calendar__day-navigation button {
+.schedule-calendar__week-button {
   display: grid;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
+  width: 62px;
+  height: auto;
+  flex: 0 0 62px;
   padding: 0;
   place-items: center;
   border: 1px solid var(--calendar-accent);
@@ -119,17 +118,31 @@
 }
 
 .schedule-calendar__week-button img {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
-.schedule-calendar__day-navigation img {
-  display: block;
-  width: 30px;
-  height: 20px;
-  margin: auto;
-  object-fit: contain;
+.schedule-calendar__navigation-zone img {
+  opacity: 0;
+  transition: opacity 180ms ease, filter 100ms ease, transform 100ms ease;
+}
+
+.schedule-calendar__navigation-zone:hover img,
+.schedule-calendar__navigation-zone:focus-visible img {
+  filter: brightness(0.62) contrast(1.35) saturate(1.25);
+  opacity: 0.96;
+}
+
+.schedule-calendar__navigation-zone:active img {
+  opacity: 1;
+  filter: brightness(0.42) contrast(1.4) saturate(1.3);
+  transform: scale(0.94);
+}
+
+.schedule-calendar__navigation-zone:focus-visible {
+  outline: 2px solid rgb(159 37 37 / 45%);
+  outline-offset: -4px;
 }
 
 .schedule-calendar__date {
@@ -191,21 +204,26 @@
 }
 
 .schedule-calendar__category {
+  display: grid;
+  min-height: 50px;
   padding: 6px 18px;
+  place-items: center;
   border: 5px solid var(--calendar-muted);
   border-radius: 999px;
   color: #68615e;
+  line-height: 1.15;
+  text-align: center;
 }
 
 .schedule-calendar__category.is-active {
   border-color: var(--category-color);
-  color: #2e2926;
+  color: var(--category-color);
 }
 
 .schedule-calendar__category--ekadashi { --category-color: #c92f35; }
 .schedule-calendar__category--fast { --category-color: #c98a24; }
 .schedule-calendar__category--holiday { --category-color: #3da44a; }
-.schedule-calendar__category--saints { --category-color: #2d8884; }
+.schedule-calendar__category--saints { --category-color: #2867b2; }
 
 .schedule-calendar__schedules {
   display: grid;
@@ -329,12 +347,6 @@
   color: #a52222;
 }
 
-.schedule-calendar__day-navigation {
-  justify-content: center;
-  gap: 32px;
-  margin-top: 22px;
-}
-
 @media (max-width: 800px) {
   .schedule-calendar {
     margin: 28px 12px;
@@ -438,6 +450,9 @@
 .schedule-calendar__date-number,
 .schedule-calendar__date.is-neighbour .schedule-calendar__date-number,
 .schedule-calendar__date.is-selected .schedule-calendar__date-number {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
   width: 57px;
   height: 57px;
   border: 3px solid transparent;
@@ -463,13 +478,80 @@
   font-size: 2rem;
 }
 
+.schedule-calendar__date.has-categories .schedule-calendar__date-number {
+  border-color: transparent;
+  background: #fff;
+}
+
+.schedule-calendar__date.has-categories .schedule-calendar__date-number::before {
+  position: absolute;
+  z-index: -1;
+  inset: -8px;
+  border-radius: 50%;
+  background: var(--date-halo);
+  content: "";
+  filter: blur(7px);
+  -webkit-mask: radial-gradient(circle, transparent 0 54%, #000 70% 100%);
+  mask: radial-gradient(circle, transparent 0 54%, #000 70% 100%);
+  opacity: 0.72;
+  pointer-events: none;
+  animation: category-date-halo 2.8s ease-in-out infinite;
+}
+
+@keyframes category-date-halo {
+  0%, 100% {
+    transform: scale(0.94);
+    opacity: 0.58;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.82;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-calendar__date.has-categories .schedule-calendar__date-number::before {
+    animation: none;
+  }
+}
+
 .schedule-calendar__date:focus-visible .schedule-calendar__date-number {
   outline: 3px solid #9f2525;
   outline-offset: 3px;
 }
 
 .schedule-calendar__categories {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: min(900px, calc(100% - 40px));
+  gap: 12px;
   margin: 24px auto 30px;
+}
+
+.schedule-calendar__schedule-navigation {
+  display: grid;
+  grid-template-columns:
+    clamp(52px, 7vw, 82px)
+    minmax(0, 680px)
+    clamp(52px, 7vw, 82px);
+  align-items: stretch;
+  justify-content: center;
+}
+
+.schedule-calendar__day-button {
+  display: grid;
+  min-width: 0;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.schedule-calendar__day-button img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .schedule-calendar__schedules {
@@ -527,12 +609,26 @@
 }
 
 @media (max-width: 800px) {
+  .schedule-calendar__categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .schedule-calendar__heading {
     padding: 0 5px;
   }
 
   .schedule-calendar__week-viewport {
     padding: 10px 4px 12px;
+  }
+
+  .schedule-calendar__week-button {
+    width: 36px;
+    flex-basis: 36px;
+  }
+
+  .schedule-calendar__week-button img {
+    filter: brightness(0.68) contrast(1.25) saturate(1.2);
+    opacity: 0.88;
   }
 
   .schedule-calendar__week {
@@ -566,6 +662,14 @@
 
   .schedule-calendar__schedules {
     display: flex;
+  }
+
+  .schedule-calendar__schedule-navigation {
+    display: block;
+  }
+
+  .schedule-calendar__day-button {
+    display: none;
   }
 }
 
@@ -641,6 +745,7 @@
   }
 
   .schedule-calendar__categories {
+    width: calc(100% - 16px);
     gap: 8px;
   }
 
@@ -744,7 +849,7 @@
 .schedule-marker-button--holiday,
 .schedule-marker--holiday { --marker-color: #3da44a; }
 .schedule-marker-button--saints,
-.schedule-marker--saints { --marker-color: #2d8884; }
+.schedule-marker--saints { --marker-color: #2867b2; }
 .schedule-marker-button--kartika,
 .schedule-marker--kartika_start,
 .schedule-marker--kartika_end { --marker-color: #75539b; }

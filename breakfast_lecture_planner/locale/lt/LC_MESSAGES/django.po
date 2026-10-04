@@ -276,8 +276,8 @@ msgid "Festivals"
 msgstr "Festivaliai"
 
 #: templates/planner/includes/calendar.html:82
-msgid "Appearance and disappearance days of saints"
-msgstr "Šventųjų asmenybių atėjimo / išėjimo dienos"
+msgid "Saints' days"
+msgstr "Šventųjų dienos"
 
 #: templates/planner/includes/calendar.html:104
 msgid "Day navigation"
