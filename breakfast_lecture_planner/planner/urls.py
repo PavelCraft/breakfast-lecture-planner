@@ -46,7 +46,7 @@ urlpatterns = [
         name="delete_lunch_participant",
     ),
     path("feedback/", views.FeedbackView.as_view(), name="feedback"),
-    path("remonto-darbai/", views.RenovationWork.as_view(), name="renovation_work"),
+    path("kuryba/", views.CreativityView.as_view(), name="kuryba"),
     path(
         "vaishnava-calendar/",
         views.VaishnavaCalendar.as_view(),

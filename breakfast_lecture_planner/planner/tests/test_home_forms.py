@@ -40,7 +40,7 @@ class HomeFormsTests(TestCase):
         self.assertEqual(lunch_registration_deadline(at(20, 4)), at(25, 22))
         self.assertEqual(lunch_registration_deadline(at(20, 12)), at(25, 22))
 
-    def test_countdown_is_shared_by_home_and_public_content_pages(self):
+    def test_countdown_is_only_rendered_on_pages_that_show_it(self):
         Post.objects.create(pk=14, title="Calendar", content="Calendar")
         now = timezone.make_aware(datetime(2026, 9, 18, 21, 30), timezone.get_current_timezone())
         with patch("calendar_utils.utils.timezone.now", return_value=now):
@@ -50,7 +50,8 @@ class HomeFormsTests(TestCase):
         self.assertGreater(remaining, 0)
         marker = f'data-registration-remaining-ms="{remaining}"'
         self.assertContains(home, marker)
-        self.assertContains(calendar, marker)
+        self.assertNotContains(calendar, marker)
+        self.assertNotContains(calendar, 'data-schedule-calendar')
 
     @patch("planner.views.lunch_registration_deadline", return_value=None)
     @patch("calendar_utils.utils.lunch_registration_deadline", return_value=None)

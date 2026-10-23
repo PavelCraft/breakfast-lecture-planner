@@ -16,9 +16,9 @@ PUBLIC_PAGES = {
         "lt": ("Vaišnavų kalendorius | Malone.guru", "Vaišnavų kalendorius: ekadašio dienos, šventės ir kitos svarbios datos Šri Šri Nitai Gaurasundaros šventykloje."),
         "en": ("Vaishnava Calendar | Malone.guru", "Explore the Vaishnava calendar, including Ekadashi days, festivals and other important dates at the Sri Sri Nitai Gaurasundara Temple."),
     },
-    "planner:renovation_work": {
-        "lt": ("Šventyklos remonto darbai | Malone.guru", "Informacija apie Šri Šri Nitai Gaurasundaros šventyklos remonto darbus ir galimybes prisidėti prie šventyklos atnaujinimo."),
-        "en": ("Temple Renovation | Malone.guru", "Information about renovation work at the Sri Sri Nitai Gaurasundara Temple and how to support the temple's renewal."),
+    "planner:kuryba": {
+        "lt": ("Kūryba | Malone.guru", "Šri Šri Nitai Gaurasundaros šventyklos kūryba, bendruomenės idėjos ir projektai."),
+        "en": ("Creativity | Malone.guru", "Creative work, community ideas and projects at the Sri Sri Nitai Gaurasundara Temple."),
     },
     "planner:principai": {
         "lt": ("Mūsų vertybės ir principai | Malone.guru", "Susipažinkite su Šri Šri Nitai Gaurasundaros šventyklos vertybėmis, principais ir vaišnavų bendruomenės gyvenimu."),

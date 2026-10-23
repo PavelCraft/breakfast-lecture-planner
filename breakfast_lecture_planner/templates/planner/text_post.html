@@ -1,0 +1,77 @@
+{% extends 'new_base.html' %}
+{% load static i18n %}
+
+{% block title %}{% if seo_title %}{{ seo_title }}{% elif title %}{{ title }}{% else %}{{ object.title }}{% endif %}{% endblock title %}
+
+{% block content %}
+  <link rel="stylesheet" href="{% static 'css/text_post.css' %}">
+
+  <header class="container text-post-header">
+    {% include "includes/new_header.html" %}
+  </header>
+
+  <main class="container text-post-page">
+    <article class="text-post-card">
+      <h1 class="text-post-title"{% if content_has_heading %} hidden{% endif %}>{% if title %}{{ title }}{% else %}{{ object.title }}{% endif %}</h1>
+
+      {% if editor_form %}
+        <button class="edit-icon-button text-post-edit-button"
+                type="button"
+                data-open-text-post-editor
+                aria-label="Редактировать"
+                title="Редактировать">
+          <img src="{% static 'icons/pen-to-square-regular-full.svg' %}" alt="">
+        </button>
+      {% endif %}
+
+      <div class="post-content text-post-content">{{ content|safe }}</div>
+
+      {% if editor_form %}
+        <section id="text-post-editor" class="main-post-editor" hidden>
+          <form id="text-post-editor-form" class="main-post-editor-form">
+            {% csrf_token %}
+            <div class="main-post-editor-actions main-post-editor-actions-top">
+              <button type="submit" class="btn btn-success">Сохранить</button>
+              <button type="button" class="btn btn-secondary close-text-post-editor">Отмена</button>
+            </div>
+            {{ editor_form.media }}
+            {{ editor_form.content }}
+            <div class="main-post-editor-actions">
+              <button type="submit" class="btn btn-success">Сохранить</button>
+              <button type="button" class="btn btn-secondary close-text-post-editor">Отмена</button>
+            </div>
+          </form>
+        </section>
+
+        <button class="edit-icon-button text-post-edit-button"
+                type="button"
+                data-open-text-post-editor
+                aria-label="Редактировать"
+                title="Редактировать">
+          <img src="{% static 'icons/pen-to-square-regular-full.svg' %}" alt="">
+        </button>
+      {% endif %}
+    </article>
+  </main>
+
+  <footer class="text-center footer text-post-footer">
+    <a href="{% url 'planner:cabinet' %}">
+      <img src="{% static 'img/logo-orange.png' %}" alt="logo" class="img-fluid text-post-footer-logo">
+    </a>
+    <p class="bottom">
+      Harė Krišna, Harė Krišna, Krišna Krišna, Harė Harė<br>
+      Harė Rama, Harė Rama, Rama Rama, Harė Harė
+    </p>
+    {% include "planner/includes/footer_credit.html" %}
+  </footer>
+
+  {% if editor_form %}
+    <script>
+      window.scheduleEditLockUrl = "{% url 'planner:schedule_edit_lock' %}";
+      window.scheduleEditLockScope = "{{ edit_lock_scope|escapejs }}";
+      window.textPostEditUrl = "{% url 'planner:post-edit' object.pk %}";
+    </script>
+    <script src="{% static 'js/schedule_edit_lock.js' %}"></script>
+    <script src="{% static 'js/text_post_editor.js' %}" defer></script>
+  {% endif %}
+{% endblock content %}

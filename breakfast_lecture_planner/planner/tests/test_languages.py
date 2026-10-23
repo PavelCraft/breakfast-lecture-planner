@@ -34,7 +34,7 @@ class PublicLanguageTests(TestCase):
 
         self.assertIn("Sukurta", lithuanian)
         self.assertIn("Developed by", english)
-        self.assertIn('href="https://formacode.dev/en"', lithuanian)
+        self.assertIn('href="https://formacode.dev/en/malone-guru"', lithuanian)
 
     def test_russian_browser_uses_lithuanian_public_site(self):
         response = self.client.get(

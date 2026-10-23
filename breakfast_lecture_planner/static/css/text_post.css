@@ -1,0 +1,77 @@
+body {
+  background: #fbf6f1;
+}
+
+.text-post-header {
+  padding-top: 18px;
+}
+
+.text-post-page {
+  min-height: 52vh;
+  padding: clamp(32px, 6vw, 76px) 16px 40px;
+}
+
+.text-post-card {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 56px);
+  border: 1px solid rgba(87, 61, 45, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 50px rgba(79, 58, 44, 0.08);
+}
+
+.text-post-title {
+  margin: 0 0 28px;
+  color: #302820;
+  font-size: clamp(2rem, 5vw, 3.3rem);
+  line-height: 1.08;
+}
+
+.text-post-content {
+  color: #302820;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.text-post-content img,
+.text-post-content figure,
+.text-post-content table {
+  max-width: 100%;
+}
+
+.text-post-content img {
+  height: auto;
+}
+
+.text-post-edit-button {
+  margin: 14px 0;
+}
+
+.text-post-card .main-post-editor .ck-editor__editable_inline {
+  min-height: 55vh;
+}
+
+.text-post-footer {
+  padding: 20px 16px 34px;
+}
+
+.text-post-footer-logo {
+  max-height: 50px;
+}
+
+@media (max-width: 575.98px) {
+  .text-post-header {
+    padding-top: 8px;
+  }
+
+  .text-post-page {
+    padding-top: 22px;
+  }
+
+  .text-post-card {
+    padding: 24px 18px;
+    border-radius: 20px;
+  }
+}

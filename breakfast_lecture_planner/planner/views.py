@@ -39,8 +39,34 @@ def is_admin(user):
 LOCK_LIFETIME = timedelta(hours=2)
 
 
-def _active_schedule_lock(scope="schedule"):
+def _post_id_for_edit_scope(scope):
+    """Return the post protected by an editor lock scope."""
+    if scope == "schedule":
+        return 12
+    if scope == "archive":
+        return 17
+    match = re.fullmatch(r"post-(\d+)", scope or "")
+    if match:
+        post_id = int(match.group(1))
+        if post_id not in {12, 17}:
+            return post_id
+    return None
+
+
+def _edit_scope_for_post(post_id):
+    if post_id == 12:
+        return "schedule"
+    if post_id == 17:
+        return "archive"
+    return f"post-{post_id}"
+
+
+def _clear_expired_edit_locks():
     ScheduleEditLock.objects.filter(expires_at__lte=timezone.now()).delete()
+
+
+def _active_schedule_lock(scope="schedule"):
+    _clear_expired_edit_locks()
     return ScheduleEditLock.objects.select_related("user").filter(scope=scope).first()
 
 
@@ -317,17 +343,21 @@ class ScheduleEditLockView(View):
         action = request.POST.get("action")
         token = request.POST.get("token", "")
         scope = request.POST.get("scope", "schedule")
-        if scope not in {"schedule", "archive"}:
+        post_id = _post_id_for_edit_scope(scope)
+        if post_id is None:
             return JsonResponse({"error": "Неизвестная область редактирования."}, status=400)
         if not token:
             return JsonResponse({"error": "Не передан идентификатор вкладки."}, status=400)
         with transaction.atomic():
-            Post.objects.select_for_update().get(pk=12 if scope == "schedule" else 17)
+            try:
+                Post.objects.select_for_update().get(pk=post_id)
+            except Post.DoesNotExist:
+                return JsonResponse({"error": "Страница не найдена."}, status=404)
             lock = _active_schedule_lock(scope)
             if action == "acquire":
                 if lock and (lock.token != token or lock.user_id != request.user.id):
                     return JsonResponse({
-                        "error": f"Расписание уже редактирует {lock.user.get_username()}. Дождитесь сохранения или выхода из режима редактирования.",
+                        "error": f"Эту страницу уже редактирует {lock.user.get_username()}. Дождитесь сохранения или выхода из режима редактирования.",
                         "locked_by": lock.user.get_username(),
                     }, status=409)
                 if lock:
@@ -348,14 +378,14 @@ class ScheduleEditUnlockView(View):
     template_name = "planner/schedule_edit_unlock.html"
 
     def get(self, request):
-        _active_schedule_lock()
+        _clear_expired_edit_locks()
         return render(request, self.template_name, {
             "edit_locks": ScheduleEditLock.objects.select_related("user").order_by("scope"),
         })
 
     def post(self, request):
         scope = request.POST.get("scope")
-        if scope not in {"schedule", "archive"}:
+        if _post_id_for_edit_scope(scope) is None:
             return JsonResponse({"error": "Неизвестная область редактирования."}, status=400)
         ScheduleEditLock.objects.filter(scope=scope).delete()
         return render(request, self.template_name, {
@@ -496,14 +526,20 @@ class PostCreateView(CreateView):
 
 class PostDetailView(DetailView):
     model = Post
-    template_name = "planner/combined.html"
+    template_name = "planner/text_post.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         post = self.get_object()
         context["content"] = markdown(post.content)
-        context.update(lunch_countdown_context())
+        context["content_has_heading"] = bool(
+            re.search(r"<h[1-3]\b", context["content"], flags=re.IGNORECASE)
+        )
         context["allowed_groups"] = ["Админ"]
+        if self.request.user.is_authenticated and is_admin(self.request.user):
+            context["editor_form"] = MainPostEditorForm(instance=post)
+            context["unified_editor"] = True
+            context["edit_lock_scope"] = _edit_scope_for_post(post.pk)
         return context
 
 
@@ -540,8 +576,8 @@ class PostUpdateView(UpdateView):
 
     def post(self, request, *args, **kwargs):
         post_id = self.kwargs.get("pk")
-        scope = "archive" if post_id == 17 else "schedule"
-        if post_id in {12, 17} and not _owns_schedule_lock(request, scope):
+        scope = _edit_scope_for_post(post_id)
+        if not _owns_schedule_lock(request, scope):
             return JsonResponse(
                 {"error": "Блокировка редактирования истекла или принадлежит другой вкладке."}, status=409
             )
@@ -580,12 +616,6 @@ class VaishnavaCalendar(PostDetailView):
     def get_object(self, queryset=None):
         return Post.objects.get(pk=14)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["allowed_groups"] = ["Админ", "Энтузиаст"]
-        return context
-
-
 class VaishnavaEtiquette(PostDetailView):
     extra_context = {"title": "Vaišnavų etiketas"}
 
@@ -593,8 +623,8 @@ class VaishnavaEtiquette(PostDetailView):
         return Post.objects.get(pk=20)
 
 
-class RenovationWork(PostDetailView):
-    extra_context = {"title": "Šventyklos remonto darbai"}
+class CreativityView(PostDetailView):
+    extra_context = {"title": "Kūryba"}
 
     def get_object(self, queryset=None):
         return Post.objects.get(pk=21)
