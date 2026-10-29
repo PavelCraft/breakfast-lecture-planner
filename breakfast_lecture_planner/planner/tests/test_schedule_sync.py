@@ -218,6 +218,20 @@ class ScheduleEditingTests(TestCase):
         sync_daily_schedules(post)
         self.assertFalse(CalendarPeriod.objects.exists())
 
+    def test_daily_editor_does_not_treat_a_future_kartika_period_as_started(self):
+        CalendarPeriod.objects.create(
+            year=2026,
+            starts_on=date(2026, 10, 10),
+        )
+
+        response = self.first.get(
+            reverse("planner:daily_schedule"),
+            {"date": "2026-10-01"},
+        )
+
+        self.assertIsNone(response.json()["kartika_start"])
+        self.assertIsNone(response.json()["kartika_end"])
+
     def test_kartika_end_before_start_does_not_update_daily_rows(self):
         marked = self.content.replace("<p>day-1</p>", "<p>[Картика: конец]</p><p>day-1</p>")
         marked = marked.replace("<p>day-2</p>", "<p>[Картика: начало]</p><p>day-2</p>")

@@ -285,7 +285,8 @@ class DailyScheduleView(View):
             models.Q(ends_on__gte=schedule_date) | models.Q(ends_on__isnull=True)
         ).order_by("-starts_on").first()
         editing_period = CalendarPeriod.objects.filter(
-            year__in=(schedule_date.year - 1, schedule_date.year)
+            year__in=(schedule_date.year - 1, schedule_date.year),
+            starts_on__lte=schedule_date,
         ).order_by("-starts_on").first()
         raw_content = schedule.content if schedule else ""
         response = JsonResponse(

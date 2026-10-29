@@ -118,7 +118,10 @@ document.addEventListener("DOMContentLoaded", () => {
       startIndex === undefined && !previousPeriodFinished && remote.kartikaEnd
     );
 
-    if (!hasStart) {
+    const shouldSetStart = !hasStart || Boolean(
+      startIndex === undefined && startDate && day.date && day.date <= startDate
+    );
+    if (shouldSetStart) {
       insertAtDay(editor, day, "kartika_start");
       return;
     }

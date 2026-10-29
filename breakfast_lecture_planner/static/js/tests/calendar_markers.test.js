@@ -14,7 +14,7 @@ function paragraph(value, name = "paragraph") {
   return node;
 }
 
-function setup() {
+function setup({ kartikaStart = null, kartikaEnd = null } = {}) {
   const listeners = {};
   const buttons = new Map();
   const alerts = [];
@@ -77,8 +77,8 @@ function setup() {
       editors: { id_content: editor },
       scheduleMarkerMainContext: {
         dayDates: ["2026-09-17", "2026-09-18"],
-        kartikaStart: null,
-        kartikaEnd: null,
+        kartikaStart,
+        kartikaEnd,
       },
       addEventListener() {},
       innerWidth: 1200,
@@ -128,4 +128,11 @@ test("Kartika cannot end before its start", () => {
   ui.buttons.get("kartika").click();
   assert.equal(values(ui.root).includes("[Картика: конец]"), false);
   assert.equal(ui.alerts.length, 1);
+});
+
+test("Kartika click sets a start when only a later remote start is present", () => {
+  const ui = setup({ kartikaStart: "2026-09-18" });
+  ui.buttons.get("kartika").click();
+  assert.equal(values(ui.root).includes("[Картика: начало]"), true);
+  assert.equal(ui.alerts.length, 0);
 });
