@@ -1,6 +1,7 @@
 import html
 import re
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from calendar_utils.utils import lunch_countdown_context, lunch_registration_deadline
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -37,6 +38,11 @@ def is_admin(user):
 
 
 LOCK_LIFETIME = timedelta(hours=2)
+VILNIUS_TIME_ZONE = ZoneInfo("Europe/Vilnius")
+
+
+def _vilnius_today():
+    return timezone.now().astimezone(VILNIUS_TIME_ZONE).date()
 
 
 def _post_id_for_edit_scope(scope):
@@ -113,7 +119,7 @@ class CombinedView(DetailView):
             "Šeštadienis",  # Суббота
             "Sekmadienis",  # Воскресенье
         ]
-        local_today = timezone.localdate()
+        local_today = _vilnius_today()
         current_day = days_of_week[local_today.weekday()]
         current_date_heading = f"{local_today.day} d. {current_day}"
         current_week_friday = local_today + timedelta(days=4 - local_today.weekday())
@@ -160,6 +166,7 @@ class CombinedView(DetailView):
             post.content if is_ckeditor_html else highlighted_content
         )
         context["home_scene"] = HomeScene.objects.filter(pk=1).first()
+        context["calendar_today"] = local_today.isoformat()
         context["lunch_form"] = LunchParticipantForm(prefix="lunch")
         context["feedback_form"] = FeedbackForm(prefix="feedback")
         context["recaptcha_site_key"] = settings.RECAPTCHA_PUBLIC_KEY
@@ -267,7 +274,8 @@ class DailyScheduleView(View):
         except ValueError:
             return JsonResponse({"error": "Некорректная дата"}, status=400)
 
-        current_monday = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+        today = _vilnius_today()
+        current_monday = today - timedelta(days=today.weekday())
         schedule = DailySchedule.objects.filter(date=schedule_date).first()
         if schedule_date < current_monday and not request.user.is_authenticated:
             schedule = None
@@ -623,8 +631,8 @@ class VaishnavaEtiquette(PostDetailView):
         return Post.objects.get(pk=20)
 
 
-class CreativityView(PostDetailView):
-    extra_context = {"title": "Kūryba"}
+class BhaktuPerliukaiView(PostDetailView):
+    extra_context = {"title": "Bhaktų perliukai"}
 
     def get_object(self, queryset=None):
         return Post.objects.get(pk=21)

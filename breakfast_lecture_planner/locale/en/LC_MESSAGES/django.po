@@ -129,7 +129,7 @@ msgid "Vaishnava calendar"
 msgstr ""
 
 #: templates/includes/dropdown.html:16
-msgid "Creativity"
+msgid "Bhakta gems"
 msgstr ""
 
 #: templates/includes/dropdown.html:51

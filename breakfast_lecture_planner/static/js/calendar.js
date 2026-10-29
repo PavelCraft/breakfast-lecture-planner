@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const scheduleCache = new Map();
 
     const locale = calendar.dataset.locale || "en";
+    const todayKey = calendar.dataset.today;
     const weekdayNames = calendar.dataset.weekdaysShort.split("|");
     const weekdayNamesLong = calendar.dataset.weekdaysLong.split("|");
     const emptyMessage = locale.startsWith("lt")
@@ -52,7 +53,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return `conic-gradient(from -90deg, ${stops.join(", ")})`;
     }
 
-    let selectedDate = new Date();
+    const todayParts = /^\d{4}-\d{2}-\d{2}$/.test(todayKey || "")
+      ? todayKey.split("-").map(Number)
+      : null;
+    let selectedDate = todayParts
+      ? new Date(todayParts[0], todayParts[1] - 1, todayParts[2], 12)
+      : new Date();
     let editingCard = null;
     let weekVersion = 0;
     let renderVersion = 0;
@@ -122,8 +128,9 @@ document.addEventListener("DOMContentLoaded", () => {
       button.innerHTML = `
         <span class="schedule-calendar__weekday">${weekdayNames[index % 7]}</span>
         <span class="schedule-calendar__date-number">${date.getDate()}</span>
+        <span class="schedule-calendar__date-dots" aria-hidden="true"></span>
       `;
-      if (dateKey(date) === dateKey(new Date())) {
+      if (dateKey(date) === todayKey) {
         button.classList.add("is-today");
       }
       button.addEventListener("click", () => {
@@ -137,35 +144,49 @@ document.addEventListener("DOMContentLoaded", () => {
       const version = ++weekVersion;
       week.replaceChildren();
       kartikaBar.hidden = true;
+      categories.forEach((category) => category.classList.remove("is-active"));
       const requests = [];
       for (let offset = -3; offset <= 3; offset += 1) {
         const date = shiftedDate(selectedDate, offset);
         const button = createDateButton(date, (date.getDay() + 6) % 7);
         week.append(button);
         requests.push(loadSchedule(date).then((data) => {
-          if (!button.isConnected || version !== weekVersion) return false;
+          if (!button.isConnected || version !== weekVersion) {
+            return { kartika: false, categories: [] };
+          }
           const colors = (data.categories || []).map((kind) => categoryColors[kind]).filter(Boolean);
           if (colors.length) {
             button.classList.add("has-categories");
             button.style.setProperty("--date-halo", categoryHalo(colors));
-            const dots = document.createElement("span");
-            dots.className = "schedule-calendar__date-dots";
+            const dots = button.querySelector(".schedule-calendar__date-dots");
             colors.forEach((color) => {
               const dot = document.createElement("span");
               dot.className = "schedule-calendar__date-dot";
               dot.style.setProperty("--dot-color", color);
               dots.append(dot);
             });
-            button.append(dots);
           }
-          return Boolean(data.kartika);
+          return {
+            kartika: Boolean(data.kartika),
+            categories: (data.categories || []).filter((kind) => categoryColors[kind]),
+          };
         }));
       }
-      Promise.all(requests).then((active) => {
+      Promise.all(requests).then((results) => {
         if (version !== weekVersion) return;
-        const visible = window.matchMedia("(max-width: 800px)").matches ? active.slice(1, 6) : active;
-        const first = visible.indexOf(true);
-        const last = visible.lastIndexOf(true);
+        const visible = window.matchMedia("(max-width: 800px)").matches
+          ? results.slice(1, 6)
+          : results;
+        const visibleCategories = new Set(visible.flatMap((result) => result.categories));
+        categories.forEach((category) => {
+          category.classList.toggle(
+            "is-active",
+            visibleCategories.has(category.dataset.calendarCategory),
+          );
+        });
+        const kartikaDays = visible.map((result) => result.kartika);
+        const first = kartikaDays.indexOf(true);
+        const last = kartikaDays.lastIndexOf(true);
         kartikaBar.hidden = first < 0;
         if (first >= 0) {
           kartikaBar.style.left = `${((first + 0.5) / visible.length) * 100}%`;
@@ -511,9 +532,6 @@ document.addEventListener("DOMContentLoaded", () => {
           animateDateRings(previousRingSizes);
         }
         renderSchedules(data);
-        categories.forEach((category) => {
-          category.classList.toggle("is-active", (data.categories || []).includes(category.dataset.calendarCategory));
-        });
         if (animateNavigation) {
           if (outgoingWeek) {
             const direction = Math.sign(daysMoved);

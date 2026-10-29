@@ -24,7 +24,7 @@ class TextPostPageTests(TestCase):
             Post.objects.create(pk=post_id, title=title, content=f"<p>Text {post_id}</p>")
 
     def test_guest_menu_pages_are_text_only(self):
-        for view_name in ("vaishnava_calendar", "nuorodos", "kuryba", "principai"):
+        for view_name in ("vaishnava_calendar", "nuorodos", "bhaktu_perliukai", "principai"):
             with self.subTest(view_name=view_name):
                 response = self.client.get(reverse(f"planner:{view_name}"))
                 self.assertEqual(response.status_code, 200)
@@ -35,6 +35,26 @@ class TextPostPageTests(TestCase):
     def test_old_renovation_url_is_removed(self):
         response = self.client.get("/remonto-darbai/")
         self.assertEqual(response.status_code, 404)
+
+    def test_intermediate_kuryba_url_is_removed(self):
+        response = self.client.get("/kuryba/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_public_menu_is_one_column_with_expected_links(self):
+        response = self.client.get(reverse("planner:bhaktu_perliukai"))
+        html = response.content.decode()
+        expected = [
+            reverse("planner:new"),
+            reverse("planner:vaishnava_calendar"),
+            reverse("planner:bhaktu_perliukai"),
+            reverse("planner:principai"),
+            reverse("planner:nuorodos"),
+        ]
+        first_menu = html.split('<ul class="dropdown', 1)[1].split("</ul>", 1)[0]
+        positions = [first_menu.index(f'href="{url}"') for url in expected]
+        self.assertEqual(positions, sorted(positions))
+        self.assertNotIn("Events and projects", first_menu)
+        self.assertNotIn("About us", first_menu)
 
     def test_data_migration_renames_only_the_legacy_heading(self):
         post = Post.objects.get(pk=21)
@@ -51,12 +71,25 @@ class TextPostPageTests(TestCase):
 
     def test_admin_gets_ckeditor_without_schedule_controls(self):
         self.client.force_login(self.admin)
-        response = self.client.get(reverse("planner:kuryba"))
+        response = self.client.get(reverse("planner:bhaktu_perliukai"))
         self.assertContains(response, 'id="text-post-editor"')
         self.assertContains(response, 'id="id_content"')
         self.assertContains(response, 'window.scheduleEditLockScope = "post\\u002D21"')
         self.assertContains(response, "js/text_post_editor.js")
         self.assertNotContains(response, 'data-marker-controls="main"')
+
+    def test_latest_data_migration_renames_the_intermediate_heading(self):
+        post = Post.objects.get(pk=21)
+        post.title = "Kūryba"
+        post.content = "# Kūryba\n\n<p>Keep this text</p>"
+        post.save(update_fields=["title", "content"])
+        migration = import_module("planner.migrations.0009_rename_bhaktu_perliukai_page")
+
+        migration.rename_bhaktu_perliukai_page(apps, None)
+
+        post.refresh_from_db()
+        self.assertEqual(post.title, "Bhaktų perliukai")
+        self.assertEqual(post.content, "# Bhaktų perliukai\n\n<p>Keep this text</p>")
 
     def test_same_page_is_locked_but_different_page_can_be_edited(self):
         first = Client()

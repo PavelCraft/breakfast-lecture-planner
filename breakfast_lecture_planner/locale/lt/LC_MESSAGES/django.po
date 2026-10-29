@@ -133,8 +133,8 @@ msgid "Vaishnava calendar"
 msgstr "Vaišnavų kalendorius"
 
 #: templates/includes/dropdown.html:16
-msgid "Creativity"
-msgstr "Kūryba"
+msgid "Bhakta gems"
+msgstr "Bhaktų perliukai"
 
 #: templates/includes/dropdown.html:51
 msgid "About us"

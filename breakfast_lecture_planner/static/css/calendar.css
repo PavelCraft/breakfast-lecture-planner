@@ -466,12 +466,19 @@
 }
 
 .schedule-calendar__date.is-neighbour .schedule-calendar__date-number {
-  width: 67px;
-  height: 67px;
-  font-size: 1.55rem;
+  width: 57px;
+  height: 57px;
+  font-size: 1.3rem;
 }
 
 .schedule-calendar__date.is-selected .schedule-calendar__date-number {
+  width: 57px;
+  height: 57px;
+  border-width: 3px;
+  font-size: 1.3rem;
+}
+
+.schedule-calendar__date.is-today .schedule-calendar__date-number {
   width: 86px;
   height: 86px;
   border-width: 4px;
@@ -486,15 +493,18 @@
 .schedule-calendar__date.has-categories .schedule-calendar__date-number::before {
   position: absolute;
   z-index: -1;
-  inset: -8px;
+  inset: -2px;
   border-radius: 50%;
   background: var(--date-halo);
   content: "";
-  filter: blur(7px);
+  filter: blur(5px);
   -webkit-mask: radial-gradient(circle, transparent 0 54%, #000 70% 100%);
   mask: radial-gradient(circle, transparent 0 54%, #000 70% 100%);
   opacity: 0.72;
   pointer-events: none;
+}
+
+.schedule-calendar__date.has-categories.is-today .schedule-calendar__date-number::before {
   animation: category-date-halo 2.8s ease-in-out infinite;
 }
 
@@ -510,7 +520,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .schedule-calendar__date.has-categories .schedule-calendar__date-number::before {
+  .schedule-calendar__date.has-categories.is-today .schedule-calendar__date-number::before {
     animation: none;
   }
 }
@@ -597,6 +607,7 @@
   max-height: none;
   overflow: visible;
   overflow-wrap: anywhere;
+  font-size: 1.1rem;
   line-height: 1.65;
 }
 
@@ -654,6 +665,13 @@
   }
 
   .schedule-calendar__date.is-selected .schedule-calendar__date-number {
+    width: 42px;
+    height: 42px;
+    border-width: 2px;
+    font-size: 1rem;
+  }
+
+  .schedule-calendar__date.is-today .schedule-calendar__date-number {
     width: 57px;
     height: 57px;
     border-width: 3px;
@@ -732,12 +750,19 @@
   }
 
   .schedule-calendar__date.is-neighbour .schedule-calendar__date-number {
-    width: 36px;
-    height: 36px;
-    font-size: 0.9rem;
+    width: 30px;
+    height: 30px;
+    font-size: 0.82rem;
   }
 
   .schedule-calendar__date.is-selected .schedule-calendar__date-number {
+    width: 30px;
+    height: 30px;
+    border-width: 3px;
+    font-size: 0.82rem;
+  }
+
+  .schedule-calendar__date.is-today .schedule-calendar__date-number {
     width: 44px;
     height: 44px;
     border-width: 3px;
@@ -774,12 +799,18 @@
   }
 
   .schedule-calendar__date.is-neighbour .schedule-calendar__date-number {
-    width: 32px;
-    height: 32px;
-    font-size: 0.84rem;
+    width: 28px;
+    height: 28px;
+    font-size: 0.76rem;
   }
 
   .schedule-calendar__date.is-selected .schedule-calendar__date-number {
+    width: 28px;
+    height: 28px;
+    font-size: 0.76rem;
+  }
+
+  .schedule-calendar__date.is-today .schedule-calendar__date-number {
     width: 40px;
     height: 40px;
     font-size: 1rem;

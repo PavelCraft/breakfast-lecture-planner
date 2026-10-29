@@ -3,88 +3,12 @@
   <li class="dropdown-li-title">
     <h2 class="dropdown-title">{% translate "Menu" %}</h2>
   </li>
-  <li>
-    <h5>{% translate "Events and projects" %}:</h5>
-    <ul>
-      <li>
-        <div class="menu-item">
-          <a href="{% url 'planner:vaishnava_calendar' %}">{% translate "Vaishnava calendar" %}</a>
-        </div>
-      </li>
-      <li>
-        <div class="menu-item">
-          <a href="{% url 'planner:kuryba' %}">{% translate "Creativity" %}</a>
-        </div>
-      </li>
-      <!-- <li>
-        <div class="menu-item">
-          <a href="{% url 'planner:vaishnava_etiquette' %}">Vaišnavų etiketas</a>
-        </div>
-      </li> -->
-    </ul>
-  </li>
-  <!-- <li>
-    <h5>Veikla:</h5>
-    <ul>
-    
-    </ul>
-  </li> -->
+  <li><div class="menu-item"><a href="{% url 'planner:new' %}">{% translate "Home" %}</a></div></li>
+  <li><div class="menu-item"><a href="{% url 'planner:vaishnava_calendar' %}">{% translate "Vaishnava calendar" %}</a></div></li>
+  <li><div class="menu-item"><a href="{% url 'planner:bhaktu_perliukai' %}">{% translate "Bhakta gems" %}</a></div></li>
+  <li><div class="menu-item"><a href="{% url 'planner:principai' %}">{% translate "Our values and principles" %}</a></div></li>
+  <li><div class="menu-item"><a href="{% url 'planner:nuorodos' %}">{% translate "Links" %}</a></div></li>
   {% if user.is_authenticated %}
-  <li>
-    <h5></h5>
-    <ul>
-      <!-- <li>
-        <div class="menu-item before-admin">
-          <a href="{% url 'planner:cleanliness_standards' %}">Švaros standartai</a>
-        </div>
-      </li> -->
-     
-      <li>
-        <div id="admin-item">
-          <a href="{% url 'planner:cabinet' %}"><b>Кабинет админа</b></a>
-        </div>
-      </li>
-    </ul>
-  </li>
+    <li class="dropdown-admin-item"><div class="menu-item"><a href="{% url 'planner:cabinet' %}"><b>Кабинет админа</b></a></div></li>
   {% endif %}
-  <li>
-    <h5>{% translate "About us" %}:</h5>
-    <ul>
-      <li>
-        <div class="menu-item">
-          <a href="{% url 'planner:principai' %}">{% translate "Our values and principles" %}</a>
-        </div>
-      </li>
-      <li>
-        <div class="menu-item d">
-          <a href="{% url 'planner:nuorodos' %}">{% translate "Links" %}</a>
-        </div>
-      </li>
-      <!-- <li>
-        <div class="menu-item">
-          <a href="{% url 'planner:philosophy' %}">filosofija</a>
-        </div>
-      </li> -->
-      <!-- <li>
-        <div class="menu-item">
-          <a href="{% url 'planner:practice' %}">praktika</a>
-        </div>
-      </li> -->
-    </ul>
-  </li>
-  <!-- <li>
-    <ul>
-      
-      <li>
-        <div class="menu-item">
-          <a href="">Lietuva</a>
-        </div>
-      </li>
-      <li>
-        <div class="menu-item">
-          <a href="">kitos šalys</a>
-        </div>
-      </li>
-    </ul>
-  </li> -->
 </ul>

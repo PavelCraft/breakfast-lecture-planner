@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from types import SimpleNamespace
-from datetime import datetime
+from datetime import datetime, timezone as datetime_timezone
 
 from django.test import TestCase
 from django.urls import reverse
@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from calendar_utils.utils import lunch_countdown_context, lunch_registration_deadline
 from planner.models import Feedback, LunchParticipant, Post
+from planner.views import _vilnius_today
 
 
 class HomeFormsTests(TestCase):
@@ -18,6 +19,12 @@ class HomeFormsTests(TestCase):
         response = self.client.get(reverse("planner:new"))
 
         self.assertContains(response, 'data-schedule-calendar')
+        self.assertContains(response, 'id="calendar-title" class="visually-hidden"')
+        self.assertNotContains(response, 'class="schedule-calendar__title"')
+        self.assertNotContains(response, 'class="button orange small"')
+        self.assertNotContains(response, "Įvykiai ir projektai")
+        self.assertNotContains(response, "Apie mus")
+        self.assertContains(response, reverse("planner:bhaktu_perliukai"))
         self.assertNotContains(response, 'class="post-content"')
         self.assertNotContains(response, 'id="main-post-editor"')
         self.assertContains(response, 'data-home-form="feedback"')
@@ -26,6 +33,15 @@ class HomeFormsTests(TestCase):
         self.assertEqual(response.content.count(b"/recaptcha/api.js?render="), 1)
         if b'data-home-form="lunch"' in response.content:
             self.assertContains(response, 'name="lunch-captcha"')
+
+    @patch(
+        "planner.views.timezone.now",
+        return_value=datetime(2026, 10, 28, 22, 30, tzinfo=datetime_timezone.utc),
+    )
+    def test_calendar_today_uses_vilnius_time(self, mocked_now):
+        self.assertEqual(_vilnius_today().isoformat(), "2026-10-29")
+        response = self.client.get(reverse("planner:new"))
+        self.assertContains(response, 'data-today="2026-10-29"')
 
     def test_deadline_uses_riga_time_and_sunday_to_friday_window(self):
         zone = timezone.get_current_timezone()

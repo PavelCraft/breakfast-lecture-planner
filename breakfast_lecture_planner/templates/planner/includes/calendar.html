@@ -9,11 +9,12 @@
          data-edit-icon="{% static 'icons/pen-to-square-regular-full.svg' %}"
          data-can-edit="{% if daily_schedule_form %}true{% else %}false{% endif %}"
          data-locale="{{ LANGUAGE_CODE }}"
+         data-today="{{ calendar_today }}"
          data-weekdays-short="{% translate 'Mon|Tue|Wed|Thu|Fri|Sat|Sun' %}"
          data-weekdays-long="{% translate 'Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday' %}"
          aria-labelledby="calendar-title">
   <div class="schedule-calendar__heading">
-    <h2 id="calendar-title" class="schedule-calendar__title">{% if LANGUAGE_CODE == 'lt' %}Vaišnavų kalendorius{% else %}Vaishnava calendar{% endif %}</h2>
+    <h1 id="calendar-title" class="visually-hidden">{% if LANGUAGE_CODE == 'lt' %}Vaišnavų kalendorius{% else %}Vaishnava calendar{% endif %}</h1>
 
     <div class="schedule-calendar__selectors" aria-label="{% translate 'Select a date' %}">
       <label>

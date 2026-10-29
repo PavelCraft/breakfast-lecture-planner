@@ -8,25 +8,19 @@
        alt="ISKCON Vilnius Logo"
        class="logo">
   </a>
-  <!-- Menu 2 - Кнопка регистрации -->
-  <div class="menuitem">
-    <a href="{% url 'planner:lunch_register' %}" class="button orange small">{% translate "Register for Saturday lunch" %}</a>
-  </div>
-  <div class="empty-1"></div>
-  <!-- Menu 3 - Features -->
-  <div class="menuitem">
-    <div class="features-title">
-      {% translate "Menu" %}
-      <img src="{% static 'img/Vector 1.png' %}">
-      <div class="submenu_wrapper">
-        <div class="submenu">{% include "includes/dropdown.html" %}</div>
+  <div class="header-navigation">
+    <div class="menuitem">
+      <div class="features-title">
+        {% translate "Menu" %}
+        <img src="{% static 'img/Vector 1.png' %}" alt="">
+        <div class="submenu_wrapper">
+          <div class="submenu">{% include "includes/dropdown.html" %}</div>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="empty-2"></div>
-  <!-- Menu 4 - Language Switcher -->
-  <div class="menuitem">
-    {% include "includes/language_switcher.html" %}
+    <div class="menuitem">
+      {% include "includes/language_switcher.html" %}
+    </div>
   </div>
 </div>
 <hr class="full-width-line">

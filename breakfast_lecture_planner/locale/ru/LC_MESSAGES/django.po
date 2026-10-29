@@ -133,8 +133,8 @@ msgid "Vaishnava calendar"
 msgstr "Вайшнавский календарь"
 
 #: templates/includes/dropdown.html:16
-msgid "Creativity"
-msgstr "Творчество"
+msgid "Bhakta gems"
+msgstr "Жемчужины бхакт"
 
 #: templates/includes/dropdown.html:51
 msgid "About us"
