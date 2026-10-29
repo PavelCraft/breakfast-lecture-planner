@@ -1,4 +1,4 @@
-from django.db import models, transaction
+from django.db import transaction
 
 from planner.models import CalendarPeriod, DailySchedule, Post
 from planner.services.calendar_markers import markers_in_html
@@ -6,46 +6,88 @@ from planner.services.schedule_parser import ScheduleStructureError, parse_sched
 
 
 def _sync_kartika_period(parsed):
-    starts = [day.date for day in parsed.days for kind in markers_in_html(day.content) if kind == "kartika_start"]
-    ends = [day.date for day in parsed.days for kind in markers_in_html(day.content) if kind == "kartika_end"]
-    if len(starts) > 1 or len(ends) > 1:
-        raise ScheduleStructureError(["У Картики должны быть не более одного начала и одного конца."])
-
-    start = starts[0] if starts else None
-    end = ends[0] if ends else None
     dates_in_source = {day.date for day in parsed.days}
-    existing = None
-    if start:
-        existing = CalendarPeriod.objects.select_for_update().filter(year=start.year).first()
-    elif end:
-        existing = (
-            CalendarPeriod.objects.select_for_update()
-            .filter(starts_on__lt=end)
-            .filter(models.Q(ends_on__isnull=True) | models.Q(ends_on__in=dates_in_source))
-            .order_by("-starts_on")
-            .first()
-        )
-        if not existing:
-            raise ScheduleStructureError(["Найден конец Картики, но не найдено её начало."])
+    events = []
+    for day in parsed.days:
+        boundaries = [
+            kind for kind in markers_in_html(day.content)
+            if kind in {"kartika_start", "kartika_end"}
+        ]
+        if len(boundaries) > 1:
+            raise ScheduleStructureError(
+                [f"На {day.date:%d.%m.%Y} должна быть только одна граница Картики."]
+            )
+        if boundaries:
+            events.append((day.date, boundaries[0]))
 
-    actual_start = start or (existing.starts_on if existing else None)
-    if end and end <= actual_start:
-        raise ScheduleStructureError(["Конец Картики не может быть раньше её начала."])
+    existing = list(CalendarPeriod.objects.select_for_update().order_by("starts_on"))
+    source_start = min(dates_in_source)
+    carry = next(
+        (
+            period for period in reversed(existing)
+            if period.starts_on < source_start
+            and (period.ends_on is None or period.ends_on >= source_start)
+        ),
+        None,
+    )
+    open_start = carry.starts_on if carry else None
+    proposed = []
 
-    if start:
-        CalendarPeriod.objects.update_or_create(
-            year=start.year, defaults={"starts_on": start, "ends_on": end}
-        )
-    elif end and existing:
-        existing.ends_on = end
-        existing.save(update_fields=["ends_on"])
+    for boundary_date, kind in events:
+        if kind == "kartika_start":
+            if open_start is not None:
+                raise ScheduleStructureError(
+                    [
+                        f"Новое начало Картики {boundary_date:%d.%m.%Y} указано до завершения предыдущего периода."
+                    ]
+                )
+            open_start = boundary_date
+            continue
 
-    for period in CalendarPeriod.objects.select_for_update().all():
-        if not start and period.starts_on in dates_in_source:
+        if open_start is None:
+            raise ScheduleStructureError(
+                [f"Конец Картики {boundary_date:%d.%m.%Y} указан без начала."]
+            )
+        if boundary_date <= open_start:
+            raise ScheduleStructureError(["Конец Картики должен быть позже её начала."])
+        proposed.append((open_start, boundary_date))
+        open_start = None
+
+    if open_start is not None:
+        proposed.append((open_start, None))
+
+    affected_ids = {
+        period.pk for period in existing
+        if period.starts_on in dates_in_source or period.ends_on in dates_in_source
+    }
+    if carry:
+        affected_ids.add(carry.pk)
+    preserved = [
+        (period.starts_on, period.ends_on)
+        for period in existing
+        if period.pk not in affected_ids
+    ]
+    all_periods = sorted([*preserved, *proposed], key=lambda value: value[0])
+    for previous, following in zip(all_periods, all_periods[1:]):
+        if previous[1] is None or following[0] <= previous[1]:
+            raise ScheduleStructureError(
+                ["Периоды Картики не должны пересекаться."]
+            )
+
+    desired = dict(proposed)
+    for period in existing:
+        if period.pk not in affected_ids:
+            continue
+        if period.starts_on not in desired:
             period.delete()
-        elif not end and period.ends_on in dates_in_source:
-            period.ends_on = None
+            continue
+        end = desired.pop(period.starts_on)
+        if period.ends_on != end:
+            period.ends_on = end
             period.save(update_fields=["ends_on"])
+    CalendarPeriod.objects.bulk_create(
+        [CalendarPeriod(starts_on=start, ends_on=end) for start, end in desired.items()]
+    )
 
 
 def sync_daily_schedules(post, reference_date=None):

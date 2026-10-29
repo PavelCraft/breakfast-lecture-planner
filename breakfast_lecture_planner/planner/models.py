@@ -102,13 +102,18 @@ class DailySchedule(models.Model):
 class CalendarPeriod(models.Model):
     """Kartika bounds survive the weekly removal of old schedule text."""
 
-    year = models.PositiveSmallIntegerField(unique=True)
-    starts_on = models.DateField()
+    starts_on = models.DateField(unique=True)
     ends_on = models.DateField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Период Картики"
         verbose_name_plural = "Периоды Картики"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(ends_on__isnull=True) | models.Q(ends_on__gt=models.F("starts_on")),
+                name="kartika_end_after_start",
+            ),
+        ]
 
 
 class ScheduleEditLock(models.Model):

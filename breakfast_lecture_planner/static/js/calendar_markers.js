@@ -62,10 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return -1;
   }
 
-  function allMarkerIndices(blocks, kind) {
-    return blocks.flatMap((block, index) => markerKind(block) === kind ? [index] : []);
-  }
-
   function insertAtDay(editor, day, kind) {
     let offset = day.start + (day.start === 0 ? 0 : 1);
     while (offset < day.end && markerKind(day.blocks[offset])) offset += 1;
@@ -94,50 +90,69 @@ document.addEventListener("DOMContentLoaded", () => {
       : window.scheduleMarkerDailyContext || {};
   }
 
+  function kartikaEvents(controls, day) {
+    const dates = periodContext(controls).dayDates || [];
+    let ordinal = -1;
+    const events = [];
+    day.blocks.forEach((block, index) => {
+      if (dayPattern.test(nodeText(block).trim())) ordinal += 1;
+      const kind = markerKind(block);
+      if (kind !== "kartika_start" && kind !== "kartika_end") return;
+      events.push({
+        index,
+        kind,
+        date: controls.dataset.markerControls === "daily" ? day.date : dates[ordinal] || null,
+      });
+    });
+    return events;
+  }
+
   function toggleKartika(editor, controls, day) {
+    const remote = periodContext(controls);
     if (removeAtDay(editor, day, "kartika_start")) {
-      periodContext(controls).kartikaStart = null;
+      if (remote.kartikaStart === day.date) remote.kartikaStart = null;
       return;
     }
     if (removeAtDay(editor, day, "kartika_end")) {
-      periodContext(controls).kartikaEnd = null;
+      if (remote.kartikaEnd === day.date) remote.kartikaEnd = null;
       return;
     }
 
-    const localStarts = allMarkerIndices(day.blocks, "kartika_start");
-    const localEnds = allMarkerIndices(day.blocks, "kartika_end");
-    const remote = periodContext(controls);
-    const startIndex = localStarts[0];
-    const previousPeriodFinished = Boolean(
-      day.date && remote.kartikaEnd && remote.kartikaEnd < day.date
-    );
-    const startDate = startIndex === undefined && !previousPeriodFinished
-      ? remote.kartikaStart : null;
-    const hasStart = startIndex !== undefined || Boolean(startDate);
-    const hasEnd = localEnds.length > 0 || Boolean(
-      startIndex === undefined && !previousPeriodFinished && remote.kartikaEnd
-    );
+    const events = kartikaEvents(controls, day);
+    let openStart = remote.kartikaStart && (!day.date || remote.kartikaStart <= day.date) && (
+      !remote.kartikaEnd || !day.date || remote.kartikaEnd >= day.date
+    ) ? remote.kartikaStart : null;
+    let invalidSequence = false;
+    events.filter((event) => event.index < day.start).forEach((event) => {
+      if (event.kind === "kartika_start") {
+        if (openStart) invalidSequence = true;
+        openStart = event.date;
+      } else if (!openStart) {
+        invalidSequence = true;
+      } else {
+        openStart = null;
+      }
+    });
+    if (invalidSequence) {
+      alert("Сначала исправьте последовательность начала и конца Картики в расписании.");
+      return;
+    }
 
-    const shouldSetStart = !hasStart || Boolean(
-      startIndex === undefined && startDate && day.date && day.date <= startDate
-    );
-    if (shouldSetStart) {
-      insertAtDay(editor, day, "kartika_start");
+    if (openStart) {
+      if (!day.date || day.date <= openStart) {
+        alert(day.date ? "Конец Картики должен быть позже её начала." : "Не удалось определить дату этого дня. Проверьте заголовки недель и дней.");
+        return;
+      }
+      insertAtDay(editor, day, "kartika_end");
       return;
     }
-    if (hasEnd) {
-      alert("У Картики уже указаны начало и конец. Сначала снимите одну из этих отметок.");
+
+    const nextBoundary = events.find((event) => event.index >= day.end);
+    if (nextBoundary?.kind === "kartika_start") {
+      alert("В расписании уже есть более позднее начало Картики. Сначала завершите или перенесите этот период.");
       return;
     }
-    if (startIndex !== undefined && day.start <= startIndex) {
-      alert("Конец Картики должен быть позже её начала.");
-      return;
-    }
-    if (startDate && (!day.date || day.date <= startDate)) {
-      alert(day.date ? "Конец Картики должен быть позже её начала." : "Не удалось определить дату этого дня. Проверьте заголовки недель и дней.");
-      return;
-    }
-    insertAtDay(editor, day, "kartika_end");
+    insertAtDay(editor, day, "kartika_start");
   }
 
   function refreshButtons(editor, controls) {

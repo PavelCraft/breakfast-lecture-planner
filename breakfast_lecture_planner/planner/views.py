@@ -276,18 +276,20 @@ class DailyScheduleView(View):
 
         today = _vilnius_today()
         current_monday = today - timedelta(days=today.weekday())
-        schedule = DailySchedule.objects.filter(date=schedule_date).first()
-        if schedule_date < current_monday and not request.user.is_authenticated:
-            schedule = None
-        period = CalendarPeriod.objects.filter(
-            starts_on__lte=schedule_date
-        ).filter(
-            models.Q(ends_on__gte=schedule_date) | models.Q(ends_on__isnull=True)
-        ).order_by("-starts_on").first()
-        editing_period = CalendarPeriod.objects.filter(
-            year__in=(schedule_date.year - 1, schedule_date.year),
-            starts_on__lte=schedule_date,
-        ).order_by("-starts_on").first()
+        archived = schedule_date < current_monday
+        schedule = None
+        period = None
+        editing_period = None
+        if not archived:
+            schedule = DailySchedule.objects.filter(date=schedule_date).first()
+            period = CalendarPeriod.objects.filter(
+                starts_on__lte=schedule_date
+            ).filter(
+                models.Q(ends_on__gte=schedule_date) | models.Q(ends_on__isnull=True)
+            ).order_by("-starts_on").first()
+            editing_period = CalendarPeriod.objects.filter(
+                starts_on__lte=schedule_date,
+            ).order_by("-starts_on").first()
         raw_content = schedule.content if schedule else ""
         response = JsonResponse(
             {
@@ -296,9 +298,12 @@ class DailyScheduleView(View):
                 "raw_content": raw_content if request.user.is_authenticated and is_admin(request.user) else "",
                 "categories": categories_in_html(raw_content),
                 "kartika": period is not None,
+                "kartika_period": period.starts_on.isoformat() if period else None,
                 "kartika_start": editing_period.starts_on.isoformat() if editing_period else None,
                 "kartika_end": editing_period.ends_on.isoformat() if editing_period and editing_period.ends_on else None,
                 "exists": schedule is not None,
+                "archived": archived,
+                "editable": not archived,
             }
         )
         response["Cache-Control"] = "no-store, private"
@@ -317,6 +322,13 @@ class DailyScheduleView(View):
             schedule_date = date.fromisoformat(date_value)
         except ValueError:
             return JsonResponse({"error": "Некорректная дата"}, status=400)
+        today = _vilnius_today()
+        current_monday = today - timedelta(days=today.weekday())
+        if schedule_date < current_monday:
+            return JsonResponse(
+                {"error": "Расписание прошедших недель доступно только в архиве."},
+                status=400,
+            )
 
         schedule = DailySchedule.objects.filter(date=schedule_date).first()
         form = DailyScheduleForm(request.POST, instance=schedule, prefix="daily")
@@ -328,19 +340,28 @@ class DailyScheduleView(View):
                 schedule_date, form.cleaned_data["content"]
             )
         except ScheduleStructureError as error:
-            queue_admin_notification(
-                "Ошибка синхронизации дневного расписания",
-                f"Дата: {schedule_date:%d.%m.%Y}\n\n{error}",
-            )
             return JsonResponse({"error": str(error)}, status=400)
+        period = (
+            CalendarPeriod.objects.filter(starts_on__lte=schedule_date)
+            .filter(
+                models.Q(ends_on__gte=schedule_date)
+                | models.Q(ends_on__isnull=True)
+            )
+            .order_by("-starts_on")
+            .first()
+        )
         return JsonResponse(
             {
                 "date": schedule.date.isoformat(),
                 "content": public_day_content(schedule.content),
                 "raw_content": schedule.content,
                 "categories": categories_in_html(schedule.content),
+                "kartika": period is not None,
+                "kartika_period": period.starts_on.isoformat() if period else None,
                 "main_content": decorated_main_content(markdown(post.content)),
                 "updated_at": schedule.updated_at.isoformat(),
+                "archived": False,
+                "editable": True,
             }
         )
 
@@ -566,10 +587,20 @@ class PostUpdateView(UpdateView):
             period = None
             if post.pk == 12:
                 try:
-                    day_dates = [day.date.isoformat() for day in parse_schedule(post.content, reference_date=timezone.localdate()).days]
+                    parsed = parse_schedule(post.content, reference_date=timezone.localdate())
+                    day_dates = [day.date.isoformat() for day in parsed.days]
+                    first_date = parsed.days[0].date
+                    period = (
+                        CalendarPeriod.objects.filter(starts_on__lt=first_date)
+                        .filter(
+                            models.Q(ends_on__gte=first_date)
+                            | models.Q(ends_on__isnull=True)
+                        )
+                        .order_by("-starts_on")
+                        .first()
+                    )
                 except ScheduleStructureError:
                     pass
-                period = CalendarPeriod.objects.order_by("-starts_on").first()
             response = JsonResponse(
                 {
                     "id": post.pk,
@@ -601,10 +632,6 @@ class PostUpdateView(UpdateView):
                     sync_daily_schedules(self.object)
                 except ScheduleStructureError as error:
                     warning = str(error)
-                    queue_admin_notification(
-                        "Ошибка разбора большого расписания",
-                        f"Большое текстовое поле сохранено, но дневные расписания не обновлены.\n\n{error}",
-                    )
             rendered_content = markdown(self.object.content)
             if self.object.pk == 12:
                 rendered_content = decorated_main_content(rendered_content)

@@ -43,11 +43,4 @@ def queue_admin_notification(subject, message, reply_to=None):
 
 @shared_task
 def archive_previous_schedule_week():
-    try:
-        return archive_previous_week()
-    except Exception as error:
-        send_admin_notification.delay(
-            "Ошибка архивирования расписания",
-            f"Прошедшая неделя не была перенесена в архив.\n\n{error}",
-        )
-        raise
+    return archive_previous_week()

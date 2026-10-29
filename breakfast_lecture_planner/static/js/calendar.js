@@ -1,9 +1,23 @@
+function kartikaRanges(results) {
+  const ranges = [];
+  results.forEach((result, index) => {
+    if (!result.kartikaPeriod) return;
+    const previous = ranges.at(-1);
+    if (previous?.period === result.kartikaPeriod && previous.last === index - 1) {
+      previous.last = index;
+    } else {
+      ranges.push({ period: result.kartikaPeriod, first: index, last: index });
+    }
+  });
+  return ranges;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-schedule-calendar]").forEach((calendar) => {
     const monthSelect = calendar.querySelector("[data-calendar-month]");
     const yearSelect = calendar.querySelector("[data-calendar-year]");
     const week = calendar.querySelector("[data-calendar-week]");
-    const kartikaBar = calendar.querySelector("[data-calendar-kartika-bar]");
+    const kartikaBars = calendar.querySelector("[data-calendar-kartika-bars]");
     const schedules = calendar.querySelector("[data-calendar-schedules]");
     const categories = Array.from(calendar.querySelectorAll("[data-calendar-category]"));
     const scheduleUrl = calendar.dataset.scheduleUrl;
@@ -66,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let lastRenderedDate = null;
     let navigationAnimations = [];
     let navigationOverlays = [];
+    const kartikaRemovalTimers = new Map();
     selectedDate.setHours(12, 0, 0, 0);
 
     const copyDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
@@ -140,10 +155,16 @@ document.addEventListener("DOMContentLoaded", () => {
       return button;
     }
 
-    function renderWeek() {
+    function renderWeek(animateKartika = false) {
       const version = ++weekVersion;
       week.replaceChildren();
-      kartikaBar.hidden = true;
+      kartikaRemovalTimers.forEach((timer) => window.clearTimeout(timer));
+      kartikaRemovalTimers.clear();
+      kartikaBars.querySelectorAll(".is-removing").forEach((segment) => segment.remove());
+      if (!animateKartika) {
+        kartikaBars.replaceChildren();
+        kartikaBars.hidden = true;
+      }
       categories.forEach((category) => category.classList.remove("is-active"));
       const requests = [];
       for (let offset = -3; offset <= 3; offset += 1) {
@@ -152,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
         week.append(button);
         requests.push(loadSchedule(date).then((data) => {
           if (!button.isConnected || version !== weekVersion) {
-            return { kartika: false, categories: [] };
+            return { kartikaPeriod: null, categories: [] };
           }
           const colors = (data.categories || []).map((kind) => categoryColors[kind]).filter(Boolean);
           if (colors.length) {
@@ -167,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
           }
           return {
-            kartika: Boolean(data.kartika),
+            kartikaPeriod: data.kartika ? data.kartika_period : null,
             categories: (data.categories || []).filter((kind) => categoryColors[kind]),
           };
         }));
@@ -184,14 +205,54 @@ document.addEventListener("DOMContentLoaded", () => {
             visibleCategories.has(category.dataset.calendarCategory),
           );
         });
-        const kartikaDays = visible.map((result) => result.kartika);
-        const first = kartikaDays.indexOf(true);
-        const last = kartikaDays.lastIndexOf(true);
-        kartikaBar.hidden = first < 0;
-        if (first >= 0) {
-          kartikaBar.style.left = `${((first + 0.5) / visible.length) * 100}%`;
-          kartikaBar.style.right = `${((visible.length - last - 0.5) / visible.length) * 100}%`;
-        }
+        const ranges = kartikaRanges(visible);
+        const existing = new Map(Array.from(
+          kartikaBars.querySelectorAll("[data-kartika-period]"),
+          (segment) => [segment.dataset.kartikaPeriod, segment],
+        ));
+        if (ranges.length || existing.size) kartikaBars.hidden = false;
+        ranges.forEach((range) => {
+          let segment = existing.get(range.period);
+          const isNew = !segment;
+          if (isNew) {
+            segment = document.createElement("div");
+            segment.className = "schedule-calendar__kartika-segment";
+            segment.dataset.kartikaPeriod = range.period;
+            segment.innerHTML = "<span>KĀRTIKA</span>";
+            segment.style.opacity = animateKartika ? "0" : "1";
+            kartikaBars.append(segment);
+          } else {
+            existing.delete(range.period);
+          }
+          const left = `${((range.first + 0.5) / visible.length) * 100}%`;
+          const right = `${((visible.length - range.last - 0.5) / visible.length) * 100}%`;
+          if (isNew) {
+            segment.style.left = left;
+            segment.style.right = right;
+            segment.getBoundingClientRect();
+          }
+          segment.classList.toggle("is-animated", animateKartika);
+          segment.style.left = left;
+          segment.style.right = right;
+          segment.style.opacity = "1";
+        });
+        existing.forEach((segment) => {
+          if (!animateKartika) {
+            segment.remove();
+            return;
+          }
+          segment.classList.add("is-animated", "is-removing");
+          segment.style.opacity = "0";
+          const timer = window.setTimeout(() => {
+            segment.remove();
+            kartikaRemovalTimers.delete(segment);
+            if (version === weekVersion && !kartikaBars.children.length) {
+              kartikaBars.hidden = true;
+            }
+          }, 1000);
+          kartikaRemovalTimers.set(segment, timer);
+        });
+        if (!ranges.length && !animateKartika) kartikaBars.hidden = true;
       });
     }
 
@@ -299,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const body = card.querySelector(".schedule-calendar__schedule-body");
       body.classList.remove("schedule-calendar__schedule-body--empty");
       body.innerHTML = data.exists && data.content.trim() ? data.content : "";
-      if (!body.innerHTML) {
+      if (!body.innerHTML && !data.archived) {
         body.textContent = data.error || emptyMessage;
         body.classList.add("schedule-calendar__schedule-body--empty");
       }
@@ -402,7 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const article = document.createElement("article");
       article.className = "schedule-calendar__schedule-card";
       article.dataset.date = dateKey(date);
-      const editButton = canEdit
+      const editButton = canEdit && data.editable !== false
         ? `<button class="schedule-calendar__edit-button" type="button" data-daily-schedule-edit aria-label="Редактировать расписание" title="Редактировать"><img src="${editIconUrl}" alt=""></button>`
         : "";
       article.innerHTML = `
@@ -526,7 +587,7 @@ document.addEventListener("DOMContentLoaded", () => {
           width: currentCard.getBoundingClientRect().width,
           height: currentCard.getBoundingClientRect().height,
         } : null;
-        renderWeek();
+        renderWeek(animateNavigation);
         if (animateNavigation && animateRings) {
           animateDatePositions(previousDatePositions, daysMoved);
           animateDateRings(previousRingSizes);

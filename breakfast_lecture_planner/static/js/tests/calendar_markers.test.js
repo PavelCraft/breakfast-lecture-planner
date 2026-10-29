@@ -44,6 +44,10 @@ function setup({ kartikaStart = null, kartikaEnd = null } = {}) {
       paragraph("First day"),
       paragraph("18 d. Penktadienis", "heading6"),
       paragraph("Second day"),
+      paragraph("19 d. Šeštadienis", "heading6"),
+      paragraph("Third day"),
+      paragraph("20 d. Sekmadienis", "heading6"),
+      paragraph("Fourth day"),
     ],
     getChildren() { return this.children.values(); },
     getChild(index) { return this.children[index]; },
@@ -76,7 +80,7 @@ function setup({ kartikaStart = null, kartikaEnd = null } = {}) {
     window: {
       editors: { id_content: editor },
       scheduleMarkerMainContext: {
-        dayDates: ["2026-09-17", "2026-09-18"],
+        dayDates: ["2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20"],
         kartikaStart,
         kartikaEnd,
       },
@@ -128,6 +132,17 @@ test("Kartika cannot end before its start", () => {
   ui.buttons.get("kartika").click();
   assert.equal(values(ui.root).includes("[Картика: конец]"), false);
   assert.equal(ui.alerts.length, 1);
+});
+
+test("multiple non-overlapping Kartika periods can be added", () => {
+  const ui = setup();
+  for (const day of ["First day", "Second day", "Third day", "Fourth day"]) {
+    ui.setDay(ui.root.children.findIndex((node) => node.children[0].data === day));
+    ui.buttons.get("kartika").click();
+  }
+  assert.equal(values(ui.root).filter((value) => value === "[Картика: начало]").length, 2);
+  assert.equal(values(ui.root).filter((value) => value === "[Картика: конец]").length, 2);
+  assert.equal(ui.alerts.length, 0);
 });
 
 test("Kartika click sets a start when only a later remote start is present", () => {

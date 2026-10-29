@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -9,6 +10,7 @@ from django.utils import timezone
 from planner.models import CalendarPeriod, DailySchedule, Post
 from planner.services.calendar_markers import categories_in_html, decorated_main_content, public_day_content
 from planner.services.schedule_parser import (
+    ScheduleStructureError,
     parse_schedule,
     parse_week_number,
     replace_day_content,
@@ -205,7 +207,7 @@ class ScheduleEditingTests(TestCase):
         post.save(update_fields=["content"])
         from planner.services.schedule_sync import sync_daily_schedules
         sync_daily_schedules(post)
-        period = CalendarPeriod.objects.get(year=start.year)
+        period = CalendarPeriod.objects.get(starts_on=start)
         self.assertEqual(period.starts_on, start)
         self.assertIsNone(period.ends_on)
 
@@ -218,9 +220,108 @@ class ScheduleEditingTests(TestCase):
         sync_daily_schedules(post)
         self.assertFalse(CalendarPeriod.objects.exists())
 
+    def test_multiple_non_overlapping_kartika_periods_are_saved(self):
+        reference = date(2026, 10, 27)
+        content = week_html(2026, 44)
+        for day_number, marker in (
+            (1, "[Картика: начало]"),
+            (2, "[Картика: конец]"),
+            (4, "[Картика: начало]"),
+            (5, "[Картика: конец]"),
+        ):
+            content = content.replace(
+                f"<p>day-{day_number}</p>",
+                f"<p>{marker}</p><p>day-{day_number}</p>",
+            )
+        post = Post.objects.get(pk=12)
+        post.content = content
+        post.save(update_fields=["content"])
+
+        from planner.services.schedule_sync import sync_daily_schedules
+        sync_daily_schedules(post, reference_date=reference)
+
+        self.assertEqual(
+            list(CalendarPeriod.objects.order_by("starts_on").values_list("starts_on", "ends_on")),
+            [
+                (date(2026, 10, 26), date(2026, 10, 27)),
+                (date(2026, 10, 29), date(2026, 10, 30)),
+            ],
+        )
+
+    def test_calendar_api_keeps_separate_kartika_periods_separate(self):
+        monday = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+        content = self.content
+        for day_number, marker in (
+            (1, "[Картика: начало]"),
+            (2, "[Картика: конец]"),
+            (4, "[Картика: начало]"),
+            (5, "[Картика: конец]"),
+        ):
+            content = content.replace(
+                f"<p>day-{day_number}</p>",
+                f"<p>{marker}</p><p>day-{day_number}</p>",
+            )
+        post = Post.objects.get(pk=12)
+        post.content = content
+        post.save(update_fields=["content"])
+
+        from planner.services.schedule_sync import sync_daily_schedules
+        sync_daily_schedules(post)
+
+        expected = {
+            monday: monday.isoformat(),
+            monday + timedelta(days=1): monday.isoformat(),
+            monday + timedelta(days=2): None,
+            monday + timedelta(days=3): (monday + timedelta(days=3)).isoformat(),
+            monday + timedelta(days=4): (monday + timedelta(days=3)).isoformat(),
+        }
+        for day, period_start in expected.items():
+            data = self.first.get(
+                reverse("planner:daily_schedule"),
+                {"date": day.isoformat()},
+            ).json()
+            self.assertEqual(data["kartika_period"], period_start)
+            self.assertEqual(data["kartika"], period_start is not None)
+
+    def test_kartika_period_can_cross_gregorian_year(self):
+        content = week_html(2026, 53)
+        content = content.replace(
+            "<p>day-4</p>",
+            "<p>[Картика: начало]</p><p>day-4</p>",
+        ).replace(
+            "<p>day-5</p>",
+            "<p>[Картика: конец]</p><p>day-5</p>",
+        )
+        post = Post.objects.get(pk=12)
+        post.content = content
+        post.save(update_fields=["content"])
+
+        from planner.services.schedule_sync import sync_daily_schedules
+        sync_daily_schedules(post, reference_date=date(2026, 12, 31))
+
+        period = CalendarPeriod.objects.get()
+        self.assertEqual(period.starts_on, date(2026, 12, 31))
+        self.assertEqual(period.ends_on, date(2027, 1, 1))
+
+    def test_overlapping_kartika_periods_are_rejected(self):
+        content = week_html(2026, 44).replace(
+            "<p>day-1</p>",
+            "<p>[Картика: начало]</p><p>day-1</p>",
+        ).replace(
+            "<p>day-2</p>",
+            "<p>[Картика: начало]</p><p>day-2</p>",
+        )
+        post = Post.objects.get(pk=12)
+        post.content = content
+        post.save(update_fields=["content"])
+
+        from planner.services.schedule_sync import sync_daily_schedules
+        with self.assertRaisesMessage(ScheduleStructureError, "до завершения"):
+            sync_daily_schedules(post, reference_date=date(2026, 10, 27))
+        self.assertFalse(CalendarPeriod.objects.exists())
+
     def test_daily_editor_does_not_treat_a_future_kartika_period_as_started(self):
         CalendarPeriod.objects.create(
-            year=2026,
             starts_on=date(2026, 10, 10),
         )
 
@@ -330,7 +431,7 @@ class ScheduleEditingTests(TestCase):
                 HTTP_X_REQUESTED_WITH="XMLHttpRequest",
             )
             self.assertEqual(response.status_code, 200, response.content)
-        period = CalendarPeriod.objects.get(year=monday.year)
+        period = CalendarPeriod.objects.get(starts_on=monday)
         self.assertEqual(period.starts_on, monday)
         self.assertEqual(period.ends_on, tuesday)
         self.assertFalse(self.first.get(url, {"date": (tuesday + timedelta(days=1)).isoformat()}).json()["kartika"])
@@ -351,9 +452,20 @@ class ScheduleEditingTests(TestCase):
         sync_daily_schedules(post)
 
         archive_previous_week(reference_date=today)
-        period = CalendarPeriod.objects.get(year=previous_monday.year)
+        period = CalendarPeriod.objects.get(starts_on=previous_monday)
         self.assertEqual(period.starts_on, previous_monday)
         self.assertIsNone(period.ends_on)
+        archived_response = self.first.get(
+            reverse("planner:daily_schedule"),
+            {"date": previous_monday.isoformat()},
+        ).json()
+        self.assertEqual(archived_response["content"], "")
+        self.assertEqual(archived_response["raw_content"], "")
+        self.assertEqual(archived_response["categories"], [])
+        self.assertFalse(archived_response["kartika"])
+        self.assertFalse(archived_response["exists"])
+        self.assertTrue(archived_response["archived"])
+        self.assertFalse(archived_response["editable"])
         response = self.first.get(
             reverse("planner:daily_schedule"), {"date": current_monday.isoformat()}
         )
@@ -372,7 +484,8 @@ class ScheduleEditingTests(TestCase):
         period.refresh_from_db()
         self.assertEqual(period.ends_on, current_monday)
 
-    def test_invalid_big_text_is_saved_without_changing_daily_rows(self):
+    @patch("planner.views.queue_admin_notification")
+    def test_invalid_big_text_is_saved_without_changing_daily_rows(self, notify):
         today = timezone.localdate()
         DailySchedule.objects.create(date=today, content="<p>Published</p>")
         lock_url = reverse("planner:schedule_edit_lock")
@@ -388,6 +501,7 @@ class ScheduleEditingTests(TestCase):
         self.assertEqual(
             DailySchedule.objects.get(date=today).content, "<p>Published</p>"
         )
+        notify.assert_not_called()
 
     def test_daily_edit_updates_big_schedule(self):
         today = timezone.localdate()
@@ -404,6 +518,36 @@ class ScheduleEditingTests(TestCase):
         )
         self.assertEqual(response.status_code, 200, response.content)
         self.assertIn("Updated in calendar", Post.objects.get(pk=12).content)
+
+    @patch("planner.views.queue_admin_notification")
+    def test_failed_daily_sync_does_not_notify_bot(self, notify):
+        self.first.post(
+            reverse("planner:schedule_edit_lock"),
+            {"action": "acquire", "token": "first"},
+        )
+        response = self.first.post(
+            reverse("planner:daily_schedule"),
+            {
+                "date": "2025-01-01",
+                "daily-content": "<p>Missing day</p>",
+                "edit_lock_token": "first",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("архиве", response.json()["error"])
+        notify.assert_not_called()
+
+    @patch("planner.tasks.send_admin_notification.delay")
+    @patch("planner.tasks.archive_previous_week")
+    def test_archive_error_does_not_notify_bot(self, archive, notify):
+        from planner.tasks import archive_previous_schedule_week
+
+        archive.side_effect = ScheduleStructureError(["Broken schedule"])
+        with self.assertRaises(ScheduleStructureError):
+            archive_previous_schedule_week()
+        notify.assert_not_called()
 
     def test_archives_past_week_and_keeps_daily_history(self):
         today = timezone.localdate()

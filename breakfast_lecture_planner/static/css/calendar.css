@@ -901,17 +901,35 @@
   padding-top: 39px;
 }
 
-.schedule-calendar__kartika-bar {
+.schedule-calendar__kartika-bars {
   position: absolute;
+  left: 0;
+  right: 0;
   top: 20px;
   height: 5px;
+  pointer-events: none;
+}
+
+.schedule-calendar__kartika-segment {
+  position: absolute;
+  top: 0;
+  height: 5px;
+  min-width: 5px;
+  transform: translateX(-2.5px);
   border-radius: 999px;
   background: #75539b;
 }
 
-.schedule-calendar__kartika-bar[hidden] { display: none; }
+.schedule-calendar__kartika-segment.is-animated {
+  transition:
+    left 1000ms cubic-bezier(.42, 0, .58, 1),
+    right 1000ms cubic-bezier(.42, 0, .58, 1),
+    opacity 1000ms ease-in-out;
+}
 
-.schedule-calendar__kartika-bar span {
+.schedule-calendar__kartika-bars[hidden] { display: none; }
+
+.schedule-calendar__kartika-segment span {
   position: absolute;
   left: 50%;
   bottom: 5px;
