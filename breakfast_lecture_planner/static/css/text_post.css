@@ -45,6 +45,109 @@ body {
   height: auto;
 }
 
+/* Links are entered as an ordinary CKEditor list. Presentation turns that
+   simple, resilient structure into the directory shown in the design. */
+.text-post-card--post-15 {
+  width: min(1024px, 100%);
+}
+
+.text-post-card--post-15 .text-post-title {
+  margin-bottom: 8px;
+}
+
+.text-post-card--post-15 .text-post-content > p:first-child {
+  margin: 0 0 26px;
+  color: #77706b;
+}
+
+.text-post-card--post-15 .text-post-content ul {
+  display: grid;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.text-post-card--post-15 .text-post-content li {
+  position: relative;
+  min-height: 70px;
+  padding: 14px 30px 14px 22px;
+  border-radius: 6px;
+  color: #77706b;
+}
+
+.text-post-card--post-15 .text-post-content li:nth-child(even) {
+  background: #f5f3f2;
+}
+
+.text-post-card--post-15 .text-post-content li > p {
+  margin: 0;
+}
+
+.text-post-card--post-15 .text-post-content li a:first-child {
+  display: block;
+  width: 48%;
+  color: #302820;
+  font-size: 1.05em;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.text-post-card--post-15 .text-post-content li a:first-child::after {
+  position: absolute;
+  top: 50%;
+  left: 58%;
+  right: 24px;
+  overflow: hidden;
+  transform: translateY(-50%);
+  color: #9f4b3d;
+  content: attr(href) "  \2197";
+  font-size: 0.86em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-post-card--post-15 .text-post-content li a:first-child:hover,
+.text-post-card--post-15 .text-post-content li a:first-child:focus-visible,
+.text-post-card--post-15 .text-post-content li a:first-child:hover::after,
+.text-post-card--post-15 .text-post-content li a:first-child:focus-visible::after {
+  color: #b24835;
+}
+
+.text-post-card--post-15 .text-post-content li > br {
+  display: none;
+}
+
+/* Bhaktų perliukai remains free-form rich text, but gets the generous rhythm
+   and large, readable typography from the supplied mobile concept. */
+.text-post-card--post-21 .text-post-title {
+  font-size: clamp(2.6rem, 10vw, 3.5rem);
+}
+
+.text-post-card--post-21 .text-post-content {
+  font-size: clamp(1.12rem, 2.2vw, 1.55rem);
+  line-height: 1.65;
+}
+
+.text-post-card--post-21 .text-post-content ol {
+  padding-left: 1.5em;
+  margin: 0;
+}
+
+.text-post-card--post-21 .text-post-content li {
+  padding-left: 0.3em;
+  margin-bottom: 1.4em;
+}
+
+.text-post-card--post-21 .text-post-content li::marker {
+  color: #a44d3f;
+  font-weight: 600;
+}
+
+.text-post-card--post-21 .text-post-content li:last-child {
+  margin-bottom: 0;
+}
+
 .text-post-edit-button {
   margin: 14px 0;
 }
@@ -73,5 +176,27 @@ body {
   .text-post-card {
     padding: 24px 18px;
     border-radius: 20px;
+  }
+
+  .text-post-card--post-15 .text-post-content li {
+    padding: 15px 18px;
+  }
+
+  .text-post-card--post-15 .text-post-content li a:first-child {
+    width: 100%;
+  }
+
+  .text-post-card--post-15 .text-post-content li a:first-child::after {
+    position: static;
+    display: block;
+    margin-top: 5px;
+    transform: none;
+    font-size: 0.78em;
+    white-space: normal;
+  }
+
+  .text-post-card--post-21 .text-post-content {
+    font-size: 1.12rem;
+    line-height: 1.6;
   }
 }

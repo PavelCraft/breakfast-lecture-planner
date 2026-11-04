@@ -391,6 +391,23 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    function fitScheduleCard(card) {
+      if (!card?.isConnected || card.classList.contains("is-editing")) return;
+      const content = card.querySelector(".schedule-calendar__schedule-content");
+      const body = card.querySelector(".schedule-calendar__schedule-body");
+      if (!body || !content || content.hidden) return;
+
+      card.classList.remove("has-overflowing-schedule");
+      body.classList.remove("is-compact", "is-dense", "is-overflowing");
+      if (body.scrollHeight <= body.clientHeight + 1) return;
+      body.classList.add("is-compact");
+      if (body.scrollHeight <= body.clientHeight + 1) return;
+      body.classList.add("is-dense");
+      if (body.scrollHeight <= body.clientHeight + 1) return;
+      body.classList.add("is-overflowing");
+      card.classList.add("has-overflowing-schedule");
+    }
+
     function waitForDailyEditor() {
       return new Promise((resolve) => {
         let attempts = 0;
@@ -413,6 +430,8 @@ document.addEventListener("DOMContentLoaded", () => {
       dailyScheduleError.hidden = true;
       if (editingCard?.isConnected) {
         editingCard.querySelector(".schedule-calendar__schedule-content").hidden = false;
+        editingCard.classList.remove("is-editing");
+        fitScheduleCard(editingCard);
       }
       schedules.after(dailyEditorContainer);
       editingCard = null;
@@ -453,6 +472,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       dailyScheduleError.hidden = true;
       card.querySelector(".schedule-calendar__schedule-content").hidden = true;
+      card.classList.add("is-editing");
       card.querySelector(".schedule-calendar__schedule-header").after(dailyEditorContainer);
       dailyEditorContainer.hidden = false;
       editingCard = card;
@@ -486,6 +506,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (editingCard) closeDailyEditor();
       const selectedCard = createScheduleCard(selectedDate, data);
       schedules.replaceChildren(selectedCard);
+      fitScheduleCard(selectedCard);
     }
 
     function slideReplacement(container, incoming, outgoing, distance) {
@@ -701,6 +722,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (event.key === "schedule-data-updated") refreshScheduleData();
     });
     window.matchMedia("(max-width: 800px)").addEventListener("change", renderWeek);
+
+    let fitAfterResize = null;
+    window.addEventListener("resize", () => {
+      window.clearTimeout(fitAfterResize);
+      fitAfterResize = window.setTimeout(() => {
+        fitScheduleCard(schedules.querySelector(".schedule-calendar__schedule-card"));
+      }, 120);
+    });
 
     render();
   });

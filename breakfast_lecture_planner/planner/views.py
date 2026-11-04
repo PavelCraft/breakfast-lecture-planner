@@ -645,6 +645,11 @@ class NuarodosView(PostDetailView):
         # Возвращаем объект с pk=15
         return Post.objects.get(pk=15)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = _("Links")
+        return context
+
 
 class VaishnavaCalendar(PostDetailView):
     extra_context = {"title": "Vaišnavų kalendorius"}

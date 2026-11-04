@@ -32,6 +32,12 @@ class TextPostPageTests(TestCase):
                 self.assertNotContains(response, "data-schedule-calendar")
                 self.assertNotContains(response, 'id="text-post-editor"')
 
+    def test_links_page_has_public_title_and_design_hook(self):
+        response = self.client.get(reverse("planner:nuorodos"))
+
+        self.assertContains(response, '<h1 class="text-post-title">Nuorodos</h1>', html=True)
+        self.assertContains(response, 'class="text-post-card text-post-card--post-15"')
+
     def test_old_renovation_url_is_removed(self):
         response = self.client.get("/remonto-darbai/")
         self.assertEqual(response.status_code, 404)

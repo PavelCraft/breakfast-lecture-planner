@@ -11,7 +11,7 @@
   </header>
 
   <main class="container text-post-page">
-    <article class="text-post-card">
+    <article class="text-post-card text-post-card--post-{{ object.pk }}">
       <h1 class="text-post-title"{% if content_has_heading %} hidden{% endif %}>{% if title %}{{ title }}{% else %}{{ object.title }}{% endif %}</h1>
 
       {% if editor_form %}
