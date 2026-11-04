@@ -672,7 +672,7 @@ class BhaktuPerliukaiView(PostDetailView):
 
 
 class IsdView(PostDetailView):
-    extra_context = {"title": "isd"}
+    extra_context = {"title": "ISKCON Lietuvoje: Pagrindiniai veiklos principai"}
 
     def get_object(self, queryset=None):
         return Post.objects.get(pk=22)

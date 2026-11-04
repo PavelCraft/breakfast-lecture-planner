@@ -38,6 +38,25 @@ class TextPostPageTests(TestCase):
         self.assertContains(response, '<h1 class="text-post-title">Nuorodos</h1>', html=True)
         self.assertContains(response, 'class="text-post-card text-post-card--post-15"')
 
+    def test_principles_page_has_descriptive_title(self):
+        response = self.client.get(reverse("planner:principai"))
+
+        self.assertContains(
+            response,
+            '<h1 class="text-post-title">ISKCON Lietuvoje: Pagrindiniai veiklos principai</h1>',
+            html=True,
+        )
+
+    def test_faq_has_table_carousel_for_admins(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("planner:faq"))
+
+        self.assertContains(response, "Как создать и заполнить таблицу в CKEditor?")
+        self.assertContains(response, 'data-faq-carousel')
+        self.assertContains(response, "img/faq/table-step-1.png")
+        self.assertContains(response, "img/faq/table-step-6.png")
+        self.assertContains(response, "js/faq_carousel.js")
+
     def test_old_renovation_url_is_removed(self):
         response = self.client.get("/remonto-darbai/")
         self.assertEqual(response.status_code, 404)
@@ -98,6 +117,20 @@ class TextPostPageTests(TestCase):
         post.refresh_from_db()
         self.assertEqual(post.title, "Bhaktų perliukai")
         self.assertEqual(post.content, "# Bhaktų perliukai\n\n<p>Keep this text</p>")
+
+    def test_principles_heading_data_migration_replaces_only_isd_heading(self):
+        post = Post.objects.get(pk=22)
+        post.title = "isd"
+        post.content = "# isd\n\n<p>Keep this text</p>"
+        post.save(update_fields=["title", "content"])
+        migration = import_module("planner.migrations.0011_rename_principles_heading")
+
+        migration.rename_principles_heading(apps, None)
+
+        post.refresh_from_db()
+        expected = "ISKCON Lietuvoje: Pagrindiniai veiklos principai"
+        self.assertEqual(post.title, expected)
+        self.assertEqual(post.content, f"# {expected}\n\n<p>Keep this text</p>")
 
     def test_same_page_is_locked_but_different_page_can_be_edited(self):
         first = Client()
