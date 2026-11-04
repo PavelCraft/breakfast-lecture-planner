@@ -26,7 +26,20 @@
 
 :is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table th {
   padding-top: 8px;
-  padding-bottom: 8px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #cfc6c1;
+  color: #77706b;
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+/* CKEditor creates ordinary td cells until an editor explicitly enables a
+   header row. Keep the first row visually separated in that state too. */
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content)
+  figure.table table:not(:has(thead)) tbody > tr:first-child > td {
+  padding-top: 8px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #cfc6c1;
   color: #77706b;
   font-size: 0.78rem;
   font-weight: 400;
@@ -82,6 +95,18 @@
 
   :is(.post-content, .schedule-calendar__schedule-body)
     figure.table:has(tr > :nth-child(2):last-child) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child)
+    table:not(:has(thead)) tbody > tr:first-child {
     position: absolute;
     width: 1px;
     height: 1px;
