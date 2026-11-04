@@ -80,6 +80,8 @@ class TextPostPageTests(TestCase):
         response = self.client.get(reverse("planner:bhaktu_perliukai"))
         self.assertContains(response, 'id="text-post-editor"')
         self.assertContains(response, 'id="id_content"')
+        self.assertContains(response, "insertTable")
+        self.assertContains(response, "css/ckeditor_tables.css")
         self.assertContains(response, 'window.scheduleEditLockScope = "post\\u002D21"')
         self.assertContains(response, "js/text_post_editor.js")
         self.assertNotContains(response, 'data-marker-controls="main"')

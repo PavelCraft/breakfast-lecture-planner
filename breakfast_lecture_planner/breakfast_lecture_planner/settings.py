@@ -254,6 +254,8 @@ custom_color_palette = [
     {"color": "hsl(207, 90%, 54%)", "label": "Blue"},
 ]
 
+CKEDITOR_5_CUSTOM_CSS = "css/ckeditor_tables.css"
+
 CKEDITOR_5_CONFIGS = {
     "extends": {
         "toolbar": [
@@ -266,6 +268,7 @@ CKEDITOR_5_CONFIGS = {
             "link",
             "bulletedList",
             "numberedList",
+            "insertTable",
             "|",
             "blockQuote",
             "fontSize",
@@ -284,6 +287,16 @@ CKEDITOR_5_CONFIGS = {
         },
         "fontBackgroundColor": {
             "colors": custom_color_palette,
+        },
+        "table": {
+            "contentToolbar": [
+                "tableColumn",
+                "tableRow",
+                "mergeTableCells",
+                "toggleTableCaption",
+                "tableProperties",
+                "tableCellProperties",
+            ],
         },
         "image": {
             "toolbar": [

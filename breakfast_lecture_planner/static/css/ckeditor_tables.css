@@ -1,0 +1,128 @@
+/* Tables created in CKEditor. The selectors target rendered rich text and
+   CKEditor itself, not cabinet/admin data tables. */
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table {
+  width: 100%;
+  max-width: 100%;
+  margin: 22px 0;
+  overflow-x: auto;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table table {
+  width: 100%;
+  border: 0;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+  table-layout: fixed;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table th,
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table td {
+  padding: 17px 22px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  vertical-align: middle;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table th {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  color: #77706b;
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table tbody tr:nth-child(even) td {
+  background: #f5f3f2;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table tbody td:first-child {
+  border-radius: 6px 0 0 6px;
+  color: #302820;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table tbody td:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table a {
+  color: #9f4b3d;
+  text-decoration: none;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table a::after {
+  margin-left: 0.45em;
+  content: "\2197";
+  font-size: 1.05em;
+}
+
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table a:hover,
+:is(.post-content, .schedule-calendar__schedule-body, .ck-content) figure.table a:focus-visible {
+  color: #b24835;
+  text-decoration: underline;
+}
+
+.ck-content figure.table .ck-table-resized {
+  table-layout: fixed;
+}
+
+@media (max-width: 575.98px) {
+  :is(.post-content, .schedule-calendar__schedule-body) figure.table table {
+    min-width: 560px;
+  }
+
+  /* Two-column public tables become cards. Wider data tables remain
+     horizontally scrollable and retain their column headings. */
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) :is(table, tbody, tr, td) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) table {
+    border-spacing: 0;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) tbody tr {
+    padding: 15px 18px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) tbody tr:nth-child(even) {
+    background: #f5f3f2;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) tbody tr:nth-child(even) td {
+    background: transparent;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) tbody td {
+    padding: 0;
+    border-radius: 0;
+  }
+
+  :is(.post-content, .schedule-calendar__schedule-body)
+    figure.table:has(tr > :nth-child(2):last-child) tbody td + td {
+    margin-top: 7px;
+    font-size: 0.88em;
+    overflow-wrap: anywhere;
+  }
+}
