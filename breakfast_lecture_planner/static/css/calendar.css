@@ -622,6 +622,22 @@
   line-height: 1.65;
 }
 
+.schedule-calendar__schedule-body ul {
+  padding-left: 1.35em;
+  margin: 0;
+  list-style: disc outside;
+}
+
+.schedule-calendar__schedule-body ol {
+  padding-left: 1.55em;
+  margin: 0;
+  list-style: decimal outside;
+}
+
+.schedule-calendar__schedule-body li {
+  padding-left: 0.12em;
+}
+
 .schedule-calendar__schedule-body.is-compact {
   font-size: 1rem;
   line-height: 1.45;
