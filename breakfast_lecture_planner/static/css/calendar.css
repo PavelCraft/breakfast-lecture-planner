@@ -575,7 +575,7 @@
 
 .schedule-calendar__schedule-card,
 .schedule-calendar__schedule-card.is-adjacent {
-  --daily-card-height: 420px;
+  --daily-card-height: 360px;
   display: flex;
   height: var(--daily-card-height);
   flex-direction: column;
@@ -728,7 +728,7 @@
 
   .schedule-calendar__schedule-card,
   .schedule-calendar__schedule-card.is-adjacent {
-    --daily-card-height: 460px;
+    --daily-card-height: 380px;
   }
 
   .schedule-calendar__schedule-navigation {
