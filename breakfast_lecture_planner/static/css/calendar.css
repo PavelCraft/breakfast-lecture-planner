@@ -472,13 +472,6 @@
 }
 
 .schedule-calendar__date.is-selected .schedule-calendar__date-number {
-  width: 57px;
-  height: 57px;
-  border-width: 3px;
-  font-size: 1.3rem;
-}
-
-.schedule-calendar__date.is-today .schedule-calendar__date-number {
   width: 86px;
   height: 86px;
   border-width: 4px;
@@ -725,13 +718,6 @@
   }
 
   .schedule-calendar__date.is-selected .schedule-calendar__date-number {
-    width: 42px;
-    height: 42px;
-    border-width: 2px;
-    font-size: 1rem;
-  }
-
-  .schedule-calendar__date.is-today .schedule-calendar__date-number {
     width: 57px;
     height: 57px;
     border-width: 3px;
@@ -821,13 +807,6 @@
   }
 
   .schedule-calendar__date.is-selected .schedule-calendar__date-number {
-    width: 30px;
-    height: 30px;
-    border-width: 3px;
-    font-size: 0.82rem;
-  }
-
-  .schedule-calendar__date.is-today .schedule-calendar__date-number {
     width: 44px;
     height: 44px;
     border-width: 3px;
@@ -875,12 +854,6 @@
   }
 
   .schedule-calendar__date.is-selected .schedule-calendar__date-number {
-    width: 28px;
-    height: 28px;
-    font-size: 0.76rem;
-  }
-
-  .schedule-calendar__date.is-today .schedule-calendar__date-number {
     width: 40px;
     height: 40px;
     font-size: 1rem;
