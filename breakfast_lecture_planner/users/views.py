@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.http import HttpResponseForbidden
 from django.shortcuts import redirect
@@ -46,7 +46,7 @@ class UserCreateView(CreateView):
         return super().form_valid(form)
 
 
-# @method_decorator(superuser_required, name='dispatch')
+@method_decorator(login_required, name="dispatch")
 class UserUpdateView(UpdateView):
     model = get_user_model()
     template_name = "planner/add_person.html"
@@ -54,12 +54,18 @@ class UserUpdateView(UpdateView):
     success_url = reverse_lazy("users:user_list")
     extra_context = {"role": "администратора", "edit": True}
 
-    def get(self, request, *args, **kwargs):
-        print("GET request to update user with pk:", kwargs.get("pk"))
-        return super().get(request, *args, **kwargs)
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser and request.user.pk != kwargs.get("pk"):
+            return HttpResponseForbidden("Можно редактировать только собственный аккаунт.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["can_manage_groups"] = self.request.user.is_superuser
+        return kwargs
 
 
-@method_decorator(superuser_required, name="dispatch")
+@method_decorator(login_required, name="dispatch")
 class UserListView(ListView):
     model = get_user_model()
     template_name = "planner/persons_list.html"

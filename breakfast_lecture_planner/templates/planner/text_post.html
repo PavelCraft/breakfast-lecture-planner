@@ -72,6 +72,7 @@
       window.textPostEditUrl = "{% url 'planner:post-edit' object.pk %}";
     </script>
     <script src="{% static 'js/schedule_edit_lock.js' %}"></script>
+    {% if object.pk == 14 %}<script src="{% static 'js/hashtag_mentions.js' %}" defer></script>{% endif %}
     <script src="{% static 'js/text_post_editor.js' %}" defer></script>
   {% endif %}
 {% endblock content %}

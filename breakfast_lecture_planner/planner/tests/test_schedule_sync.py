@@ -1,14 +1,21 @@
 from datetime import date, timedelta
+from importlib import import_module
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.apps import apps
 from django.contrib.auth.models import Group
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from planner.models import CalendarPeriod, DailySchedule, Post
-from planner.services.calendar_markers import categories_in_html, decorated_main_content, public_day_content
+from planner.services.calendar_markers import (
+    categories_in_html,
+    decorated_main_content,
+    public_day_content,
+    set_markers_in_html,
+)
 from planner.services.schedule_parser import (
     ScheduleStructureError,
     parse_schedule,
@@ -87,6 +94,42 @@ class ScheduleParserTests(TestCase):
         self.assertNotIn("[Экадаши]", public_day_content(content))
         self.assertIn("Текст [Праздник]", public_day_content(content))
         self.assertIn("schedule-marker--ekadashi", decorated_main_content(content))
+
+    def test_hashtags_are_detected_inline_and_remain_public(self):
+        content = "<p>Program #Ekadaši #ŠventųjųDienos</p>"
+        self.assertEqual(categories_in_html(content), ["ekadashi", "saints"])
+        self.assertIn("#Ekadaši", public_day_content(content))
+
+    def test_similar_or_unknown_hashtags_do_not_assign_categories(self):
+        content = "<p>#Pasninkass #ŠventėsExtra #Nežinoma</p>"
+        self.assertEqual(categories_in_html(content), [])
+
+    def test_known_hashtags_are_normalized_to_separate_leading_paragraphs(self):
+        content = "<p>Program #Šventės #Pasninkas #Nežinoma</p>"
+
+        normalized = set_markers_in_html(
+            content,
+            ["holiday", "fast"],
+        )
+
+        self.assertEqual(
+            normalized,
+            "<p>#Pasninkas</p><p>#Šventės</p><p>Program #Nežinoma</p>",
+        )
+
+    def test_marker_migration_converts_existing_posts_and_daily_rows(self):
+        post = Post.objects.create(pk=99, title="Legacy", content="<p>[Экадаши]</p>")
+        daily = DailySchedule.objects.create(
+            date=date(2030, 1, 1), content="<p>[Картика: начало]</p>"
+        )
+        migration = import_module("planner.migrations.0012_calendar_hashtags")
+
+        migration.convert_markers_to_hashtags(apps, None)
+
+        post.refresh_from_db()
+        daily.refresh_from_db()
+        self.assertEqual(post.content, "<p>#Ekadaši</p>")
+        self.assertEqual(daily.content, "<p>#KartikaPradžia</p>")
 
 
 class ScheduleEditingTests(TestCase):
@@ -345,7 +388,7 @@ class ScheduleEditingTests(TestCase):
         self.assertIn("Конец Картики", response.json()["warning"])
         self.assertFalse(CalendarPeriod.objects.exists())
 
-    def test_daily_marker_edit_updates_metadata_and_hides_marker_from_card(self):
+    def test_daily_marker_edit_updates_metadata_and_normalizes_hashtags(self):
         today = timezone.localdate()
         self.first.post(reverse("planner:schedule_edit_lock"), {"action": "acquire", "token": "first"})
         response = self.first.post(
@@ -360,8 +403,9 @@ class ScheduleEditingTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()["categories"], ["ekadashi", "holiday"])
         self.assertNotIn("[Экадаши]", response.json()["content"])
+        self.assertIn("#Ekadaši", response.json()["content"])
         self.assertIn("schedule-marker--ekadashi", response.json()["main_content"])
-        self.assertIn("[Экадаши]", Post.objects.get(pk=12).content)
+        self.assertIn("#Ekadaši", Post.objects.get(pk=12).content)
         self.assertIn(
             "schedule-marker--ekadashi",
             self.first.get(reverse("planner:new")).content.decode(),
@@ -369,6 +413,41 @@ class ScheduleEditingTests(TestCase):
         public = Client().get(reverse("planner:daily_schedule"), {"date": today.isoformat()}).json()
         self.assertEqual(public["raw_content"], "")
         self.assertNotIn("[Экадаши]", public["content"])
+        self.assertIn("#Ekadaši", public["content"])
+
+    def test_daily_hashtag_edit_updates_matching_vaishnava_calendar_date(self):
+        today = timezone.localdate()
+        month_names = {
+            1: "Sausio", 2: "Vasario", 3: "Kovo", 4: "Balandžio",
+            5: "Gegužės", 6: "Birželio", 7: "Liepos", 8: "Rugpjūčio",
+            9: "Rugsėjo", 10: "Spalio", 11: "Lapkričio", 12: "Gruodžio",
+        }
+        Post.objects.create(
+            pk=14,
+            title="Calendar",
+            content=(
+                f"<h2>Vaišnavų Kalendorius {today.year}-{today.year + 1}</h2>"
+                f"<p>{today.day} {month_names[today.month]} Įvykis</p>"
+            ),
+        )
+        self.first.post(
+            reverse("planner:schedule_edit_lock"),
+            {"action": "acquire", "token": "first"},
+        )
+
+        response = self.first.post(
+            reverse("planner:daily_schedule"),
+            {
+                "date": today.isoformat(),
+                "daily-content": "<p>#Pasninkas</p><p>Program</p>",
+                "edit_lock_token": "first",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        calendar = Post.objects.get(pk=14)
+        self.assertIn(f"{today.day} {month_names[today.month]} Įvykis #Pasninkas", calendar.content)
 
     def test_big_editor_adds_and_removes_daily_categories(self):
         today = timezone.localdate()
@@ -402,6 +481,47 @@ class ScheduleEditingTests(TestCase):
             self.first.get(daily_url, {"date": today.isoformat()}).json()["categories"],
             [],
         )
+
+    def test_big_editor_normalizes_inline_hashtags_at_start_of_the_day(self):
+        today = timezone.localdate()
+        self.first.post(reverse("planner:schedule_edit_lock"), {"action": "acquire", "token": "first"})
+        marked = self.content.replace(
+            f"<p>day-{today.isoweekday()}</p>",
+            f"<p>day-{today.isoweekday()} #Šventės #Pasninkas</p>",
+        )
+
+        response = self.first.post(
+            reverse("planner:post-edit", args=[12]),
+            {"content": marked, "edit_lock_token": "first"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        saved = Post.objects.get(pk=12).content
+        parsed = parse_schedule(saved, reference_date=today)
+        day = next(item for item in parsed.days if item.date == today)
+        self.assertTrue(day.content.startswith("<p>#Pasninkas</p><p>#Šventės</p>"))
+        self.assertIn(f"<p>day-{today.isoweekday()}</p>", day.content)
+        self.assertEqual(DailySchedule.objects.get(date=today).content, day.content)
+
+    def test_daily_editor_normalizes_inline_hashtags_at_start_of_the_day(self):
+        today = timezone.localdate()
+        self.first.post(reverse("planner:schedule_edit_lock"), {"action": "acquire", "token": "first"})
+
+        response = self.first.post(
+            reverse("planner:daily_schedule"),
+            {
+                "date": today.isoformat(),
+                "daily-content": "<p>Program #Šventės #Pasninkas</p>",
+                "edit_lock_token": "first",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        expected = "<p>#Pasninkas</p><p>#Šventės</p><p>Program</p>"
+        self.assertEqual(DailySchedule.objects.get(date=today).content, expected)
+        self.assertIn(expected, Post.objects.get(pk=12).content)
 
     def test_service_markers_are_highlighted_for_admin_but_hidden_from_public_home(self):
         post = Post.objects.get(pk=12)

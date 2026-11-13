@@ -31,6 +31,10 @@ from .models import CalendarPeriod, DailySchedule, HomeScene, LunchParticipant, 
 from .services.calendar_markers import categories_in_html, decorated_main_content, public_day_content
 from .services.schedule_parser import ScheduleStructureError, parse_schedule
 from .services.schedule_sync import sync_daily_schedules, sync_day_to_main_schedule
+from .services.vaishnava_calendar_sync import (
+    sync_calendar_post_to_main,
+    sync_main_post_to_calendar,
+)
 from .tasks import queue_admin_notification
 
 def is_admin(user):
@@ -60,7 +64,7 @@ def _post_id_for_edit_scope(scope):
 
 
 def _edit_scope_for_post(post_id):
-    if post_id == 12:
+    if post_id in {12, 14}:
         return "schedule"
     if post_id == 17:
         return "archive"
@@ -622,6 +626,7 @@ class PostUpdateView(UpdateView):
                 {"error": "Блокировка редактирования истекла или принадлежит другой вкладке."}, status=409
             )
         self.object = self.get_object()
+        previous_content = self.object.content
         form = self.get_form()
 
         if form.is_valid():
@@ -629,13 +634,30 @@ class PostUpdateView(UpdateView):
             warning = None
             if self.object.pk == 12:
                 try:
-                    sync_daily_schedules(self.object)
+                    self.object, _ = sync_main_post_to_calendar(
+                        self.object,
+                        previous_content,
+                        reference_date=_vilnius_today(),
+                    )
+                except ScheduleStructureError as error:
+                    warning = str(error)
+            elif self.object.pk == 14:
+                try:
+                    self.object, _ = sync_calendar_post_to_main(
+                        self.object,
+                        previous_content,
+                        reference_date=_vilnius_today(),
+                    )
                 except ScheduleStructureError as error:
                     warning = str(error)
             rendered_content = markdown(self.object.content)
             if self.object.pk == 12:
                 rendered_content = decorated_main_content(rendered_content)
-            return JsonResponse({"content": rendered_content, "warning": warning})
+            return JsonResponse({
+                "content": rendered_content,
+                "warning": warning,
+                "schedule_updated": self.object.pk in {12, 14} and warning is None,
+            })
 
         return JsonResponse({"error": "Invalid form"}, status=400)
 

@@ -10,16 +10,20 @@
         <li class="list-group-item d-flex justify-content-between align-items-center">
           {{ person.name }}{{ person.username }} {{ person.email }}
           <div>
-            {% if path_edit %}
+            {% if path_edit and request.user.is_superuser or request.user.pk == person.pk %}
               <a href="{% url path_edit person.pk %}" class="btn edit btn-sm">Изменить</a>
             {% endif %}
-            <a href="{% url path_delete person.pk %}" class="btn btn-danger btn-sm">Удалить</a>
+            {% if request.user.is_superuser %}
+              <a href="{% url path_delete person.pk %}" class="btn btn-danger btn-sm">Удалить</a>
+            {% endif %}
           </div>
         </li>
       {% endfor %}
     </ul>
     <div class="d-flex justify-content-between align-items-center my-3">
-      <a href="{% url path_add_person %}" class="btn btn-primary mt-3">Добавить {{ role_singular }}</a>
+      {% if request.user.is_superuser %}
+        <a href="{% url path_add_person %}" class="btn btn-primary mt-3">Добавить {{ role_singular }}</a>
+      {% endif %}
       <a href="{% url 'planner:cabinet' %}" class="btn btn-secondary">Назад</a>
     </div>
   </div>

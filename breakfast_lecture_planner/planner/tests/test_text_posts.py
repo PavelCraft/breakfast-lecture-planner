@@ -8,6 +8,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from planner.models import Post
+from planner.forms import MainPostEditorForm
 
 
 class TextPostPageTests(TestCase):
@@ -103,7 +104,19 @@ class TextPostPageTests(TestCase):
         self.assertContains(response, "css/ckeditor_tables.css")
         self.assertContains(response, 'window.scheduleEditLockScope = "post\\u002D21"')
         self.assertContains(response, "js/text_post_editor.js")
+        self.assertNotContains(response, "js/hashtag_mentions.js")
         self.assertNotContains(response, 'data-marker-controls="main"')
+
+    def test_calendar_text_page_uses_hashtag_suggestions_and_schedule_lock(self):
+        self.client.force_login(self.admin)
+        post = Post.objects.get(pk=14)
+        form = MainPostEditorForm(instance=post)
+        response = self.client.get(reverse("planner:vaishnava_calendar"))
+
+        self.assertIn("mention", form.fields["content"].widget.config)
+        self.assertIn("#Ekadaši", str(form.fields["content"].widget.config))
+        self.assertContains(response, 'window.scheduleEditLockScope = "schedule"')
+        self.assertContains(response, "js/hashtag_mentions.js")
 
     def test_latest_data_migration_renames_the_intermediate_heading(self):
         post = Post.objects.get(pk=21)

@@ -7,6 +7,7 @@ DEPLOY_BRANCH="${DEPLOY_BRANCH:-markdown-integration}"
 HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-https://malone.guru/}"
 HEALTHCHECK_RESOLVE="${DEPLOY_HEALTHCHECK_RESOLVE:-malone.guru:443:127.0.0.1}"
 BACKUP_DIR="${PROJECT_DIR}/backups"
+DATABASE_BACKUPS_TO_KEEP=10
 DEPLOY_STATE="${PROJECT_DIR}/.deploy-state"
 COMPOSE=(docker compose --project-directory "${PROJECT_DIR}")
 
@@ -41,6 +42,18 @@ backup_file="${BACKUP_DIR}/database-$(date +%Y%m%d-%H%M%S).dump"
     sh -c 'pg_dump --format=custom -U "$POSTGRES_USER" "$POSTGRES_DB"' \
     > "${backup_file}"
 "${COMPOSE[@]}" exec -T postgres pg_restore --list < "${backup_file}" > /dev/null
+
+mapfile -t database_backups < <(
+    find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'database-*.dump' -printf '%f\n' \
+        | sort --reverse
+)
+if (( ${#database_backups[@]} > DATABASE_BACKUPS_TO_KEEP )); then
+    old_database_backups=("${database_backups[@]:DATABASE_BACKUPS_TO_KEEP}")
+    echo "Удаление старых резервных копий PostgreSQL: ${#old_database_backups[@]}..."
+    for old_backup in "${old_database_backups[@]}"; do
+        rm -- "${BACKUP_DIR}/${old_backup}"
+    done
+fi
 
 cat > "${DEPLOY_STATE}" <<EOF
 PREVIOUS_COMMIT=${previous_commit}

@@ -355,6 +355,26 @@ CKEDITOR_5_CONFIGS = {
     }
 }
 
+CKEDITOR_5_CONFIGS["schedule"] = {
+    **CKEDITOR_5_CONFIGS["extends"],
+    "mention": {
+        "feeds": [
+            {
+                "marker": "#",
+                "feed": [
+                    "#Ekadaši",
+                    "#Pasninkas",
+                    "#Šventės",
+                    "#ŠventųjųDienos",
+                    "#KartikaPradžia",
+                    "#KartikaPabaiga",
+                ],
+                "minimumCharacters": 0,
+            }
+        ]
+    },
+}
+
 CKEDITOR_5_FILE_UPLOAD_PERMISSION = (
     "any"  # "staff"  # Possible values: "staff", "authenticated", "any"
 )

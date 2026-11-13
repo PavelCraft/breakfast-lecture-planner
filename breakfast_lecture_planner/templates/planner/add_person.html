@@ -1,19 +1,23 @@
 {% extends 'admin_base.html' %}
 {% load user_filters %}
 {% block title %}
-  Добавить {{ role }}
+  {% if edit %}Изменить{% else %}Добавить{% endif %} {{ role }}
 {% endblock title %}
 {% block content %}
   <div class="container mt-4 user-registration-form">
     <!-- Добавлен класс -->
-    <h1 class="mb-4">Добавить {{ role }}</h1>
+    <h1 class="mb-4">{% if edit %}Изменить{% else %}Добавить{% endif %} {{ role }}</h1>
     <form method="post" class="needs-validation" novalidate>
       {% csrf_token %}
       <div class="mb-3 d-flex flex-column align-items-center">
         {% for field in form %}
-          <div class="form-group">
+          <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-group--checkbox{% endif %}">
             <label for="{{ field.id_for_label }}" class="form-label fw-bold">{{ field.label }}</label>
-            {{ field|addclass:"form-control" }}  <!-- Используем ваш фильтр для добавления класса -->
+            {% if field.field.widget.input_type == 'checkbox' %}
+              {{ field|addclass:"form-check-input" }}
+            {% else %}
+              {{ field|addclass:"form-control" }}
+            {% endif %}
             {% if field.help_text %}
               <div class="form-text text-muted">{{ field.help_text|linebreaks }}</div>
               <!-- Немаркированный текст -->

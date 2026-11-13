@@ -1,7 +1,7 @@
 from django.db import transaction
 
 from planner.models import CalendarPeriod, DailySchedule, Post
-from planner.services.calendar_markers import markers_in_html
+from planner.services.calendar_markers import markers_in_html, set_markers_in_html
 from planner.services.schedule_parser import ScheduleStructureError, parse_schedule, replace_day_content
 
 
@@ -102,6 +102,7 @@ def sync_daily_schedules(post, reference_date=None):
 
 
 def sync_day_to_main_schedule(schedule_date, content):
+    content = set_markers_in_html(content, markers_in_html(content))
     with transaction.atomic():
         post = Post.objects.select_for_update().get(pk=12)
         post.content = replace_day_content(post.content, schedule_date, content)
@@ -110,5 +111,12 @@ def sync_day_to_main_schedule(schedule_date, content):
         post.save(update_fields=["content"])
         schedule, _ = DailySchedule.objects.update_or_create(
             date=schedule_date, defaults={"content": content}
+        )
+        # Imported lazily to avoid a service import cycle.
+        from planner.services.vaishnava_calendar_sync import sync_date_to_calendar
+        sync_date_to_calendar(
+            schedule_date,
+            markers_in_html(content),
+            reference_date=schedule_date,
         )
     return schedule, post

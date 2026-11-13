@@ -14,7 +14,11 @@ from planner.services.schedule_archive import archive_previous_week
 )
 def send_admin_notification(subject, message, reply_to=None):
     recipients = list(
-        get_user_model().objects.exclude(email="").values_list("email", flat=True)
+        get_user_model()
+        .objects.exclude(email="")
+        .exclude(notification_settings__receive_email_notifications=False)
+        .values_list("email", flat=True)
+        .distinct()
     )
     sender = reply_to or os.getenv("ADMIN_EMAIL") or None
     if recipients:

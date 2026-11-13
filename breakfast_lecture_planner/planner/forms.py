@@ -39,13 +39,18 @@ class MainPostEditorForm(forms.ModelForm):
             "content": CKEditor5Widget(config_name="extends"),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk in {12, 14}:
+            self.fields["content"].widget = CKEditor5Widget(config_name="schedule")
+
 
 class DailyScheduleForm(forms.ModelForm):
     class Meta:
         model = DailySchedule
         fields = ["content"]
         widgets = {
-            "content": CKEditor5Widget(config_name="extends"),
+            "content": CKEditor5Widget(config_name="schedule"),
         }
 
 

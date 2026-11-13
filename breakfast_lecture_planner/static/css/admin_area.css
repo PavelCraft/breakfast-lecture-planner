@@ -316,6 +316,30 @@
   accent-color: var(--admin-accent);
 }
 
+.user-registration-form .form-group--checkbox {
+  display: flex;
+  max-width: 620px;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.user-registration-form .form-group--checkbox .form-label {
+  margin: 0;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.user-registration-form .form-check-input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin: 0;
+  accent-color: var(--admin-accent);
+  cursor: pointer;
+}
+
 .admin-image-tip {
   margin: 22px 0;
   padding: 12px 15px;

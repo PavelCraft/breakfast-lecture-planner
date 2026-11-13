@@ -76,6 +76,12 @@
       if (!response.ok) throw new Error(data.error || "Не удалось сохранить текст страницы.");
       content.innerHTML = data.content;
       if (pageTitle) pageTitle.hidden = Boolean(content.querySelector("h1, h2, h3"));
+      if (data.schedule_updated && typeof window.notifyScheduleUpdated === "function") {
+        window.notifyScheduleUpdated();
+      }
+      if (data.warning) {
+        alert("Текст сохранён, но хэштеги расписания не синхронизированы:\n\n" + data.warning);
+      }
       await closeEditor();
     } catch (error) {
       alert(error.message);

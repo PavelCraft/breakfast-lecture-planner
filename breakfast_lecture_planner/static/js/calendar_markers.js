@@ -1,11 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
   const tokens = {
-    ekadashi: "[Экадаши]",
-    fast: "[Пост]",
-    holiday: "[Праздник]",
-    saints: "[Дни святых]",
-    kartika_start: "[Картика: начало]",
-    kartika_end: "[Картика: конец]",
+    ekadashi: "#Ekadaši",
+    fast: "#Pasninkas",
+    holiday: "#Šventės",
+    saints: "#ŠventųjųDienos",
+    kartika_start: "#KartikaPradžia",
+    kartika_end: "#KartikaPabaiga",
   };
   const dayPattern = /^\d{1,2}\s*d\s*\.\s*(pirmadienis|antradienis|trečiadienis|ketvirtadienis|penktadienis|šeštadienis|sekmadienis)$/i;
 
@@ -19,6 +19,38 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!node.is("element", "paragraph")) return null;
     const value = nodeText(node).trim().toLocaleLowerCase();
     return Object.keys(tokens).find((key) => tokens[key].toLocaleLowerCase() === value) || null;
+  }
+
+  function kindForToken(value) {
+    const normalized = String(value || "").trim().toLocaleLowerCase();
+    return Object.keys(tokens).find((key) => tokens[key].toLocaleLowerCase() === normalized) || null;
+  }
+
+  function withoutTokens(value) {
+    return Object.values(tokens).reduce(
+      (result, token) => result.split(token).join(""),
+      String(value || "")
+    ).trim();
+  }
+
+  function isDayHeading(node) {
+    return dayPattern.test(withoutTokens(nodeText(node)));
+  }
+
+  function mentionIn(node) {
+    if (node?.getAttribute) {
+      const mention = node.getAttribute("mention");
+      if (mention) {
+        const kind = kindForToken(mention.id || mention._text || node.data);
+        if (kind) return { node, kind };
+      }
+    }
+    if (!node?.getChildren) return null;
+    for (const child of node.getChildren()) {
+      const found = mentionIn(child);
+      if (found) return found;
+    }
+    return null;
   }
 
   function getEditor(controls) {
@@ -43,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const headings = blocks
       .map((block, index) => ({ index, text: nodeText(block).trim() }))
-      .filter(({ text }) => dayPattern.test(text));
+      .filter(({ text }) => dayPattern.test(withoutTokens(text)));
     const ordinal = headings.findLastIndex(({ index }) => index <= cursorIndex);
     if (ordinal < 0) return null;
     const start = headings[ordinal].index;
@@ -95,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let ordinal = -1;
     const events = [];
     day.blocks.forEach((block, index) => {
-      if (dayPattern.test(nodeText(block).trim())) ordinal += 1;
+      if (isDayHeading(block)) ordinal += 1;
       const kind = markerKind(block);
       if (kind !== "kartika_start" && kind !== "kartika_end") return;
       events.push({
@@ -220,5 +252,60 @@ document.addEventListener("DOMContentLoaded", () => {
       const editor = getEditor(controls);
       if (editor) refreshButtons(editor, controls);
     });
+
+    let mentionRelocationAttached = false;
+    let convertingMention = false;
+    const attachMentionRelocation = () => {
+      if (mentionRelocationAttached) return;
+      const editor = getEditor(controls);
+      if (!editor?.model?.document?.on) {
+        if (typeof window.setTimeout === "function") {
+          window.setTimeout(attachMentionRelocation, 100);
+        }
+        return;
+      }
+      mentionRelocationAttached = true;
+      const finishCompletedMention = () => {
+        const position = editor.model.document.selection.getFirstPosition();
+        const beforeCaret = position?.parent ? nodeText(position.parent).slice(0, position.offset) : "";
+        const query = beforeCaret.match(/#[^\s#]*$/u)?.[0] || "";
+        if (!kindForToken(query)) return;
+        editor.editing?.view?.document?.fire?.("keydown", {
+          keyCode: 27,
+          preventDefault() {},
+        });
+      };
+      const scheduleMentionPanelUpdate = () => {
+        window.setTimeout(finishCompletedMention, 0);
+        window.setTimeout(finishCompletedMention, 50);
+      };
+      editor.model.document.on("change:data", () => {
+        scheduleMentionPanelUpdate();
+        if (convertingMention) return;
+        window.setTimeout(() => {
+          const root = editor.model.document.getRoot();
+          let selectedBlock = editor.model.document.selection.getFirstPosition()?.parent;
+          while (selectedBlock?.parent && selectedBlock.parent !== root) {
+            selectedBlock = selectedBlock.parent;
+          }
+          const found = mentionIn(selectedBlock);
+          if (!found) return;
+          convertingMention = true;
+          if (isDayHeading(selectedBlock)) {
+            const day = selectedDay(editor, controls);
+            if (day) {
+              editor.model.change((writer) => writer.remove(found.node));
+              if (markerIndex(day, found.kind) < 0) insertAtDay(editor, day, found.kind);
+            }
+          } else {
+            editor.model.change((writer) => writer.removeAttribute("mention", found.node));
+          }
+          refreshButtons(editor, controls);
+          convertingMention = false;
+        }, 0);
+      });
+      editor.model.document.selection?.on?.("change:range", scheduleMentionPanelUpdate);
+    };
+    attachMentionRelocation();
   });
 });
