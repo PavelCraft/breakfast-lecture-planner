@@ -95,10 +95,23 @@ class ScheduleParserTests(TestCase):
         self.assertIn("Текст [Праздник]", public_day_content(content))
         self.assertIn("schedule-marker--ekadashi", decorated_main_content(content))
 
-    def test_hashtags_are_detected_inline_and_remain_public(self):
+    def test_hashtags_are_detected_inline_and_hidden_from_public_card(self):
         content = "<p>Program #Ekadaši #ŠventųjųDienos</p>"
         self.assertEqual(categories_in_html(content), ["ekadashi", "saints"])
-        self.assertIn("#Ekadaši", public_day_content(content))
+        public = public_day_content(content)
+        self.assertNotIn("#Ekadaši", public)
+        self.assertNotIn("#ŠventųjųDienos", public)
+        self.assertIn("Program", public)
+
+    def test_marker_normalization_preserves_spaces_in_ordinary_schedule_text(self):
+        content = (
+            '<ul><li>7:50 — <span>„Šrimad-Bhagavatam“</span>'
+            '  10.13.42  <span>Dojal Govinda prabhu</span></li></ul>'
+        )
+
+        normalized = set_markers_in_html(content, [])
+
+        self.assertIn('</span>  10.13.42  <span>', normalized)
 
     def test_similar_or_unknown_hashtags_do_not_assign_categories(self):
         content = "<p>#Pasninkass #ŠventėsExtra #Nežinoma</p>"
@@ -403,7 +416,8 @@ class ScheduleEditingTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()["categories"], ["ekadashi", "holiday"])
         self.assertNotIn("[Экадаши]", response.json()["content"])
-        self.assertIn("#Ekadaši", response.json()["content"])
+        self.assertNotIn("#Ekadaši", response.json()["content"])
+        self.assertIn("#Ekadaši", response.json()["raw_content"])
         self.assertIn("schedule-marker--ekadashi", response.json()["main_content"])
         self.assertIn("#Ekadaši", Post.objects.get(pk=12).content)
         self.assertIn(
@@ -413,7 +427,7 @@ class ScheduleEditingTests(TestCase):
         public = Client().get(reverse("planner:daily_schedule"), {"date": today.isoformat()}).json()
         self.assertEqual(public["raw_content"], "")
         self.assertNotIn("[Экадаши]", public["content"])
-        self.assertIn("#Ekadaši", public["content"])
+        self.assertNotIn("#Ekadaši", public["content"])
 
     def test_daily_hashtag_edit_updates_matching_vaishnava_calendar_date(self):
         today = timezone.localdate()
@@ -686,3 +700,43 @@ class ScheduleEditingTests(TestCase):
         self.assertNotIn(f"№ {previous_week}</h2>", Post.objects.get(pk=12).content)
         self.assertIn(f"№ {previous_week}</h2>", Post.objects.get(pk=17).content)
         self.assertTrue(DailySchedule.objects.filter(date=previous_monday).exists())
+
+    def test_archives_all_past_weeks_with_hashtags_and_keeps_current_week(self):
+        today = timezone.localdate()
+        current_monday = today - timedelta(days=today.weekday())
+        older_monday = current_monday - timedelta(days=14)
+        previous_monday = current_monday - timedelta(days=7)
+
+        def marked_week(monday, marker):
+            year, week, _ = monday.isocalendar()
+            return week_html(year, week).replace(
+                "<p>day-1</p>", f"<p>{marker}</p><p>day-1</p>"
+            )
+
+        source = Post.objects.get(pk=12)
+        source.content = (
+            marked_week(older_monday, "#Ekadaši")
+            + marked_week(previous_monday, "#Šventės")
+            + marked_week(current_monday, "#Pasninkas")
+        )
+        source.save(update_fields=["content"])
+
+        self.assertEqual(archive_previous_week(reference_date=today), 2)
+
+        source.refresh_from_db()
+        archive = Post.objects.get(pk=17)
+        older_week = older_monday.isocalendar().week
+        previous_week = previous_monday.isocalendar().week
+        current_week = current_monday.isocalendar().week
+        self.assertNotIn(f"№ {older_week}</h2>", source.content)
+        self.assertNotIn(f"№ {previous_week}</h2>", source.content)
+        self.assertIn(f"№ {current_week}</h2>", source.content)
+        self.assertIn("#Ekadaši", archive.content)
+        self.assertIn("#Šventės", archive.content)
+        self.assertIn("#Pasninkas", source.content)
+        self.assertEqual(
+            categories_in_html(
+                DailySchedule.objects.get(date=current_monday).content
+            ),
+            ["fast"],
+        )

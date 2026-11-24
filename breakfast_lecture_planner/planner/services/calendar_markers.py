@@ -57,7 +57,14 @@ def marker_types_in_text(text):
 
 
 def _remove_marker_text(text):
-    return re.sub(r"[ \t]{2,}", " ", CANONICAL_PATTERN.sub("", text or "")).strip()
+    text = text or ""
+    without_markers = CANONICAL_PATTERN.sub("", text)
+    if without_markers == text:
+        # Do not normalize ordinary schedule text. In particular, CKEditor can
+        # use whitespace at inline element boundaries, and stripping it joins
+        # neighbouring pieces of text in the public daily card.
+        return text
+    return re.sub(r"[ \t]{2,}", " ", without_markers).strip()
 
 
 def marker_type(tag):
@@ -90,10 +97,19 @@ def categories_in_html(html):
 
 
 def public_day_content(html):
-    """Hashtags are public content and remain visible in the daily card."""
+    """Hide known category metadata in the public daily card."""
     soup = BeautifulSoup(html or "", "html.parser")
     for tag in list(soup.find_all(True)):
-        if marker_type(tag) and tag.get_text(" ", strip=True).startswith("["):
+        if marker_type(tag):
+            tag.decompose()
+    # Saved content is normalized to standalone marker paragraphs, but also
+    # handle older or manually entered inline markers without exposing them.
+    for text in list(soup.find_all(string=True)):
+        replacement = _remove_marker_text(str(text))
+        if replacement != str(text):
+            text.replace_with(NavigableString(replacement))
+    for tag in list(soup.find_all(["p", "div"])):
+        if not tag.get_text(strip=True) and not tag.find(["img", "table", "hr"]):
             tag.decompose()
     return str(soup)
 

@@ -616,6 +616,7 @@
   max-height: 100%;
   overflow: hidden;
   overflow-wrap: anywhere;
+  white-space: break-spaces;
   font-size: 1.1rem;
   line-height: 1.65;
 }
